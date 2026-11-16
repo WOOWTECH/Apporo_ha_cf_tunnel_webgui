@@ -74,9 +74,11 @@ async def put_options(
 async def _save_options(body: AddonOptions, background: BackgroundTasks, restart: bool) -> dict:
     state = paas._state()
     if state.get("release_pending"):
-        raise HTTPException(409, "正在解除綁定；請到 PaaS 連結頁完成後再修改設定")
+        raise HTTPException(409, "An Apporo binding is still being released. "
+                                 "Finish it on the Apporo Link page before you change settings.")
     if state.get("connection") and body.tunnel_token is not None:
-        raise HTTPException(409, "Tunnel 憑證由 PaaS 管理；請先到 PaaS 連結頁停止連線並解除綁定")
+        raise HTTPException(409, "The tunnel credential is managed by Apporo. Disconnect and "
+                                 "release the binding on the Apporo Link page first.")
     try:
         current = await supervisor.get_options()
     except SupervisorError as exc:

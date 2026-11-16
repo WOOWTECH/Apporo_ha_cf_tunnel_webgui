@@ -1,4 +1,4 @@
-"""Woow Cloudflared — FastAPI application entry point.
+"""Apporo CF Tunnel Web — FastAPI application entry point.
 
 Served exclusively through Home Assistant Ingress (no host port is
 published), so authentication is handled by Home Assistant itself. As
@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
     await supervisor.close()
 
 
-app = FastAPI(title="Woow Cloudflared", lifespan=lifespan)
+app = FastAPI(title="Apporo CF Tunnel Web", lifespan=lifespan)
 
 
 @app.exception_handler(RequestValidationError)

@@ -1,7 +1,11 @@
-"""Guided WOOW PaaS account and Security Access connection.
+"""Guided Apporo account and Security Access connection.
 
-Only the add-on backend handles OAuth tokens or tunnel credentials. The
-browser receives navigation URLs and non-secret summaries through Ingress.
+Same flow and platform API as the upstream WOOW add-on
+(Woow_ha_cloudflare_tunnel_webgui 1.1.x), pointed at the Apporo platform
+(www.apporo.ai): OAuth device authorization, per-route Access review, tunnel
+binding, anonymous external checks and release. Only the add-on backend
+handles OAuth tokens or tunnel credentials. The browser receives navigation
+URLs and non-secret summaries through Ingress.
 """
 from __future__ import annotations
 
@@ -24,8 +28,12 @@ from ..supervisor import SupervisorError
 
 router = APIRouter(prefix="/api/paas", tags=["paas"])
 
-PAAS_BASE_URL = "https://aiot.woowtech.io"
+PAAS_BASE_URL = "https://www.apporo.ai"
+# Platform contract, not branding: the Apporo platform knows this connector by
+# the same OAuth client id as the WOOW platform does, so the id stays as is.
 CLIENT_ID = "woow-ha-smart-home"
+# Shown in the Apporo portal as the device that holds the tunnel binding.
+INSTANCE_LABEL = "Apporo CF Tunnel Web (HA add-on)"
 SCOPES = "workspace:read security-access:read security-access:tunnel"
 DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"
 _pending: dict = {}
@@ -35,11 +43,13 @@ _PROCESS_RUN_ID = str(uuid.uuid4())
 
 def _api_base() -> str:
     # Override is for isolated contract tests and staging images. The shipped
-    # add-on uses the fixed production origin, never a browser-provided URL.
+    # add-on uses the fixed Apporo production origin, never a browser-provided
+    # URL.
     return os.environ.get("PAAS_API_BASE", PAAS_BASE_URL).rstrip("/")
 
 
 def _portal_path(workspace_id: int, access_id: int | None = None, tab: str = "overview") -> str:
+    # The Apporo portal keeps the platform's /woow#/ client routes.
     if access_id is None:
         return f"{PAAS_BASE_URL}/woow#/workspace/{workspace_id}"
     if tab not in ("overview", "application", "access"):
@@ -55,7 +65,7 @@ async def _form_post(path: str, form: dict) -> tuple[int, dict]:
                 payload = await response.json(content_type=None)
                 return response.status, payload if isinstance(payload, dict) else {}
     except (aiohttp.ClientError, TimeoutError, ValueError) as exc:
-        raise HTTPException(502, "PaaS 暫時無法連線，請稍後重試") from exc
+        raise HTTPException(502, "Failed to connect to the Apporo platform. Please try again later.") from exc
 
 
 async def _access_token() -> str:
@@ -65,13 +75,13 @@ async def _access_token() -> str:
         return token
     refresh = state.get("refresh_token")
     if not refresh:
-        raise HTTPException(401, "請先連接 PaaS 帳戶")
+        raise HTTPException(401, "Connect your Apporo account first.")
     status, payload = await _form_post(
         "/oauth2/token",
         {"grant_type": "refresh_token", "refresh_token": refresh, "client_id": CLIENT_ID},
     )
     if status != 200 or not payload.get("access_token"):
-        raise HTTPException(401, "PaaS 授權已失效，請重新授權")
+        raise HTTPException(401, "Your Apporo authorization has expired. Please authorize again.")
     state.update(
         access_token=payload["access_token"],
         refresh_token=payload.get("refresh_token") or refresh,
@@ -91,16 +101,19 @@ async def _request(method: str, path: str) -> dict:
             ) as response:
                 payload = await response.json(content_type=None)
                 if response.status == 401:
-                    raise HTTPException(401, "PaaS 授權已失效，請重新授權")
+                    raise HTTPException(401, "Your Apporo authorization has expired. Please authorize again.")
                 if response.status == 403:
-                    raise HTTPException(403, "需要此工作區的管理權限，請到 PaaS 確認身分")
+                    raise HTTPException(403, "You need to be an owner or admin of this workspace. "
+                                             "Check your role in the Apporo portal.")
                 if response.status == 409:
-                    raise HTTPException(409, "這個服務已綁定其他裝置，請先在 PaaS 解除綁定")
+                    raise HTTPException(409, "This service is already bound to another device. "
+                                             "Release that binding in the Apporo portal first.")
                 if response.status >= 400 or not isinstance(payload, dict):
-                    raise HTTPException(502, "PaaS 暫時無法讀取服務，請稍後重試")
+                    raise HTTPException(502, "The Apporo platform could not return the service right now. "
+                                             "Please try again later.")
                 return payload
     except (aiohttp.ClientError, TimeoutError, ValueError) as exc:
-        raise HTTPException(502, "PaaS 暫時無法連線，請稍後重試") from exc
+        raise HTTPException(502, "Failed to connect to the Apporo platform. Please try again later.") from exc
 
 
 def _state_path() -> Path:
@@ -147,7 +160,8 @@ async def start_authorization() -> dict:
         "/oauth2/device_authorization", {"client_id": CLIENT_ID, "scope": SCOPES}
     )
     if status != 200:
-        raise HTTPException(502, "PaaS 無法開始授權，請稍後重試")
+        raise HTTPException(502, "The Apporo platform could not start the authorization. "
+                                 "Please try again later.")
     device_code = payload.get("device_code")
     user_code = payload.get("user_code")
     verification_url = payload.get("verification_uri_complete") or payload.get("verification_uri")
@@ -160,7 +174,7 @@ async def start_authorization() -> dict:
         and verify_origin.netloc == api_origin.netloc
         and verify_origin.path == "/device"
     ):
-        raise HTTPException(502, "PaaS 授權回應格式不正確")
+        raise HTTPException(502, "The Apporo platform returned an invalid authorization response.")
     interval = max(5, int(payload.get("interval") or 5))
     expires_in = min(900, max(30, int(payload.get("expires_in") or 900)))
     _pending.clear()
@@ -207,7 +221,7 @@ async def authorization_status() -> dict:
     refresh_token = payload.get("refresh_token")
     if not isinstance(access_token, str) or not access_token or not isinstance(refresh_token, str) or not refresh_token:
         _pending.clear()
-        raise HTTPException(502, "PaaS 授權結果不完整，請重新授權")
+        raise HTTPException(502, "The Apporo authorization result was incomplete. Please authorize again.")
     state = _state()
     state.update(
         access_token=access_token,
@@ -223,14 +237,15 @@ async def authorization_status() -> dict:
 async def revoke_authorization() -> dict:
     state = _state()
     if state.get("connection") or state.get("release_pending"):
-        raise HTTPException(409, "請先停止本機連線並完成遠端解除綁定")
+        raise HTTPException(409, "Stop the local connection and finish releasing the remote binding first.")
     refresh_token = state.get("refresh_token")
     if refresh_token:
         status, _ = await _form_post(
             "/oauth2/revoke", {"token": refresh_token, "client_id": CLIENT_ID}
         )
         if status != 200:
-            raise HTTPException(502, "PaaS 尚未確認撤銷授權，請稍後重試")
+            raise HTTPException(502, "The Apporo platform has not confirmed the revocation yet. "
+                                     "Please try again later.")
     for key in ("access_token", "refresh_token", "expires_at"):
         state.pop(key, None)
     _pending.clear()
@@ -260,46 +275,52 @@ async def accesses(workspace_id: int) -> dict:
 def _review(access: dict) -> dict:
     issues: list[str] = []
     if access.get("state") != "active":
-        issues.append("服務尚未啟用或已停權，請到 PaaS 檢查訂閱")
+        issues.append("The service is not active yet or has been suspended. "
+                      "Check its subscription in the Apporo portal.")
     subscription = access.get("subscription")
     if not isinstance(subscription, dict) or subscription.get("state") != "in_progress":
-        issues.append("訂閱無效，請到 PaaS 開通或續訂")
+        issues.append("The subscription is not valid. Start or renew it in the Apporo portal.")
     if not access.get("tunnel_id"):
-        issues.append("Tunnel 尚未建立，請到 PaaS 完成部署")
+        issues.append("The tunnel has not been created yet. Finish the deployment in the Apporo portal.")
     connection = _state().get("connection") or {}
     if access.get("binding_state") != "unbound" and connection.get("access_id") != access.get("id"):
-        issues.append("服務已綁定其他裝置，請先到 PaaS 解除綁定")
+        issues.append("The service is bound to another device. "
+                      "Release that binding in the Apporo portal first.")
     if access.get("binding_conflict") or (access.get("connector_count") or 0) > 1:
-        issues.append("偵測到多台 connector，請先處理換機衝突")
+        issues.append("More than one connector was detected. Resolve the device-change conflict first.")
     routes = access.get("routes")
     if not isinstance(routes, list) or not routes:
-        issues.append("尚未建立公開網址，請到 PaaS 新增路由")
+        issues.append("No public hostname has been created yet. Add a route in the Apporo portal.")
         routes = []
     safe_routes = []
     public_routes = []
     for route in routes:
-        host = route.get("hostname") or "未命名路由"
+        host = route.get("hostname") or "Unnamed route"
         valid_target = bool(route.get("hostname")) and bool(route.get("service_url"))
         if not valid_target:
-            issues.append(f"{host}：公開網址或內部服務網址未設定，請到 PaaS 補齊")
+            issues.append(f"{host}: the public hostname or the internal service URL is missing. "
+                          "Complete it in the Apporo portal.")
         public = route.get("is_protected") is False
         protected = False
         awaiting_publication = False
         if public:
             public_routes.append(host)
             if route.get("access_protection_lost") is not False:
-                issues.append(f"{host}：Access 狀態尚未收斂，請到 PaaS 檢查")
+                issues.append(f"{host}: the Access state has not settled yet. Check it in the Apporo portal.")
             # PaaS parks the origin at 503 during an unprotect transition.
             # A fresh connector may be required before it can release the
             # route, so allow that explicit public intent to be claimed.
             awaiting_publication = route.get("access_publish_pending") is True
             if route.get("access_publish_pending") is not True and route.get("access_publish_pending") is not False:
-                issues.append(f"{host}：無法確認 PaaS 發布狀態，請重新讀取服務")
+                issues.append(f"{host}: the publication state on the Apporo platform could not be confirmed. "
+                              "Reload the service.")
         else:
             if route.get("is_protected") is not True:
-                issues.append(f"{host}：無法確認存取模式，請到 PaaS 重新檢查路由")
+                issues.append(f"{host}: the access mode could not be confirmed. "
+                              "Check the route again in the Apporo portal.")
             if isinstance(subscription, dict) and subscription.get("ac_max_access_seats") == 0:
-                issues.append(f"{host}：已啟用 Access，但方案沒有席次；請加購席次或在 PaaS 關閉此路由的 Access")
+                issues.append(f"{host}: Access is enabled, but the plan has no Access seats. "
+                              "Add seats, or turn off Access for this route in the Apporo portal.")
             policies = route.get("access_policies")
             allow = isinstance(policies, list) and any(
                 p.get("decision") == "allow" and any(
@@ -317,7 +338,8 @@ def _review(access: dict) -> dict:
             )
             login_ready = route.get("login_google") is True or route.get("login_email_otp") is True
             if not login_ready:
-                issues.append(f"{host}：尚未指定登入方式；請在 PaaS 勾選 Email OTP 或 Google")
+                issues.append(f"{host}: no login method is selected. "
+                              "Select Email OTP or Google in the Apporo portal.")
             # A protected route still needs explicit access policy and login.
             declared = (
                 valid_target and route.get("is_protected") is True
@@ -336,7 +358,8 @@ def _review(access: dict) -> dict:
                 and route.get("access_publish_pending") is True
             )
             if not protected and not awaiting_publication:
-                issues.append(f"{host}：Access 保護或允許名單尚未確認，請到 PaaS 設定")
+                issues.append(f"{host}: Access protection or the allow list is not confirmed yet. "
+                              "Set it up in the Apporo portal.")
         safe_routes.append({
             "hostname": route.get("hostname"), "service_url": route.get("service_url"),
             "public": public, "protected": protected,
@@ -368,7 +391,7 @@ async def review_access(access_id: int) -> dict:
     data = await _request("GET", f"/api/security-access/accesses/{access_id}")
     access = data.get("access")
     if not isinstance(access, dict) or access.get("id") != access_id:
-        raise HTTPException(502, "PaaS 服務資料格式不正確")
+        raise HTTPException(502, "The Apporo platform returned invalid service data.")
     return _review(access)
 
 
@@ -381,7 +404,7 @@ async def connection_status(probe: bool = Query(default=False)) -> dict:
     data = await _request("GET", f"/api/security-access/accesses/{access_id}/status")
     access = data.get("access")
     if not isinstance(access, dict) or access.get("id") != access_id:
-        raise HTTPException(502, "PaaS 連線狀態格式不正確")
+        raise HTTPException(502, "The Apporo platform returned an invalid connection status.")
     reviewed = _review(access)
     tunnel = await metrics.tunnel_status()
     external = []
@@ -416,26 +439,28 @@ async def connect_access(
     async with _connect_lock:
         review = await review_access(access_id)
         if not review["ready"]:
-            raise HTTPException(409, "；".join(review["issues"]))
+            raise HTTPException(409, " ".join(review["issues"]))
         if review["public_routes"] and not allow_public_routes:
-            raise HTTPException(409, "此服務含未啟用 Cloudflare Access 的公開網址；請確認後再連結")
+            raise HTTPException(409, "This service has public hostnames that are not protected by "
+                                     "Cloudflare Access. Confirm them, then connect again.")
         state = _state()
         if state.get("release_pending"):
-            raise HTTPException(409, "先完成上一個服務的解除綁定，再重新連結")
+            raise HTTPException(409, "Finish releasing the previous service's binding, then connect again.")
         prior = state.get("connection") or {}
         if prior and prior.get("access_id") != access_id:
-            raise HTTPException(409, "請先解除目前連結，再選擇其他服務")
+            raise HTTPException(409, "Disconnect the current service before you choose another one.")
         try:
             current_options = await supervisor.get_options()
         except SupervisorError as exc:
-            raise HTTPException(502, "無法讀取 add-on 設定，請稍後重試") from exc
+            raise HTTPException(502, "Could not read the add-on configuration. Please try again later.") from exc
         if current_options.get("tunnel_token") and not prior:
-            raise HTTPException(409, "目前已有手動設定的 Tunnel token；請先在設定頁確認並移除")
+            raise HTTPException(409, "A manually configured tunnel token is already set. "
+                                     "Review and remove it on the Config page first.")
 
         instance_uid = state.get("instance_uid") or str(uuid.uuid4())
         state["instance_uid"] = instance_uid
         _save_state(state)  # Persist before claim; retries must reuse the UID.
-        query = urlencode({"instance_uid": instance_uid, "instance_label": "Woow Cloudflared add-on"})
+        query = urlencode({"instance_uid": instance_uid, "instance_label": INSTANCE_LABEL})
         token_path = f"/api/security-access/accesses/{access_id}/tunnel-token?{query}"
         release_path = f"/api/security-access/accesses/{access_id}/tunnel-binding?{urlencode({'instance_uid': instance_uid})}"
         credential = await _request("GET", token_path)
@@ -443,7 +468,8 @@ async def connect_access(
         if not isinstance(tunnel_token, str) or not tunnel_token:
             if not prior:
                 await _release_after_failed_connect(release_path, access_id)
-            raise HTTPException(502, "PaaS 未提供有效 Tunnel 憑證；請檢查是否仍有待解除的綁定")
+            raise HTTPException(502, "The Apporo platform did not return a valid tunnel credential. "
+                                     "Check whether a binding is still waiting to be released.")
         options = dict(current_options)
         options["tunnel_token"] = tunnel_token
         token_installed = False
@@ -465,11 +491,13 @@ async def connect_access(
                     # The token may still be installed. Keep PaaS bound so a
                     # second machine cannot claim it while this add-on may run.
                     raise HTTPException(
-                        502, "本機設定回復失敗；遠端綁定已保留，請先檢查 add-on 設定與執行狀態"
+                        502, "The local settings could not be restored, so the remote binding is kept. "
+                             "Check the add-on configuration and whether the add-on is running first."
                     ) from rollback_error
             if not prior:
                 await _release_after_failed_connect(release_path, access_id)
-            raise HTTPException(502, "add-on 設定寫入失敗；請重試，若仍失敗請檢查 PaaS 綁定") from exc
+            raise HTTPException(502, "The add-on configuration could not be written. Please try again; "
+                                     "if it still fails, check the binding in the Apporo portal.") from exc
         background.add_task(supervisor.restart_self)
         return {"connected": True, "restarting": True, "connection": state["connection"]}
 
@@ -490,7 +518,7 @@ async def disconnect(background: BackgroundTasks) -> dict:
     async with _connect_lock:
         state = _state()
         if not state.get("connection"):
-            raise HTTPException(409, "目前沒有 PaaS 連結")
+            raise HTTPException(409, "There is no Apporo connection to disconnect.")
         try:
             options = await supervisor.get_options()
             state["release_pending"] = True
@@ -505,7 +533,8 @@ async def disconnect(background: BackgroundTasks) -> dict:
             options.pop("catch_all_service", None)
             await supervisor.set_options(options)
         except (SupervisorError, OSError) as exc:
-            raise HTTPException(502, "無法停止本機 Tunnel；遠端綁定仍保留，請重試") from exc
+            raise HTTPException(502, "Could not stop the local tunnel. "
+                                     "The remote binding is kept; please try again.") from exc
         background.add_task(supervisor.restart_self)
         return {"stopping": True, "release_pending": True}
 
@@ -519,21 +548,25 @@ async def finish_disconnect() -> dict:
             return {"released": True}
         access_id = state.get("pending_release_access_id") or connection.get("access_id")
         if not access_id:
-            raise HTTPException(409, "缺少解除綁定目標；請到 PaaS Portal 人工確認")
+            raise HTTPException(409, "The binding to release is unknown. Check it manually in the Apporo portal.")
         try:
             options = await supervisor.get_options()
         except SupervisorError as exc:
-            raise HTTPException(502, "無法確認本機 Tunnel 已停止，稍後再重試解除綁定") from exc
+            raise HTTPException(502, "Could not confirm that the local tunnel has stopped. "
+                                     "Try releasing the binding again later.") from exc
         if options.get("tunnel_token"):
-            raise HTTPException(409, "本機 Tunnel token 仍在設定中；先停止本機連線")
+            raise HTTPException(409, "A local tunnel token is still installed. Stop the local connection first.")
         if state.get("stop_requested_by"):
             if state["stop_requested_by"] == _PROCESS_RUN_ID:
-                raise HTTPException(409, "正在等待 add-on 重啟與 Tunnel 停止，請稍後重試")
+                raise HTTPException(409, "Waiting for the add-on to restart and the tunnel to stop. "
+                                         "Please try again shortly.")
             if (await metrics.tunnel_status()).metrics_reachable:
-                raise HTTPException(409, "Tunnel 程序仍在執行，暫不解除遠端綁定")
+                raise HTTPException(409, "The tunnel process is still running, "
+                                         "so the remote binding is not released yet.")
         instance_uid = state.get("instance_uid")
         if not instance_uid:
-            raise HTTPException(409, "缺少原始裝置 ID；請在 PaaS Portal 解除綁定")
+            raise HTTPException(409, "The original device ID is missing. "
+                                     "Release the binding in the Apporo portal.")
         path = f"/api/security-access/accesses/{access_id}/tunnel-binding?{urlencode({'instance_uid': instance_uid})}"
         await _request("DELETE", path)
         state.pop("connection", None)

@@ -1,9 +1,9 @@
-"""PaaS onboarding contracts through the public Ingress API."""
+"""Apporo platform onboarding contracts through the public Ingress API."""
 import json
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, unquote_plus
 
 import pytest
 
@@ -17,7 +17,7 @@ def fake_paas(monkeypatch, tmp_path):
         detail = {
             "id": 25,
             "workspace_id": 7,
-            "name": "家用 HA",
+            "name": "Home HA",
             "state": "active",
             "tunnel_id": "tunnel-25",
             "binding_state": "unbound",
@@ -75,9 +75,9 @@ def fake_paas(monkeypatch, tmp_path):
         def do_GET(self):
             received.append((self.path, self.headers.get("Authorization", "")))
             if self.path == "/api/security-access/workspaces":
-                payload = {"workspaces": [{"id": 7, "name": "家用工作區"}]}
+                payload = {"workspaces": [{"id": 7, "name": "Home workspace"}]}
             elif self.path == "/api/security-access/workspaces/7/accesses":
-                payload = {"accesses": [{"id": 25, "name": "家用 HA", "state": "active"}]}
+                payload = {"accesses": [{"id": 25, "name": "Home HA", "state": "active"}]}
             elif self.path == "/api/security-access/accesses/25":
                 payload = {"access": received.detail}
             elif self.path == "/api/security-access/accesses/25/status":
@@ -121,7 +121,7 @@ def test_unlinked_addon_offers_real_portal_entry(client):
     assert response.status_code == 200
     assert response.json() == {
         "authorized": False,
-        "portal_url": "https://aiot.woowtech.io/woow#/workspaces",
+        "portal_url": "https://www.apporo.ai/woow#/workspaces",
         "connection": None,
         "release_pending": False,
     }
@@ -164,12 +164,20 @@ def test_subscription_list_and_review_are_read_only(client, fake_paas, tmp_path)
         "refresh_token": "PRIVATE_REFRESH_TOKEN",
         "expires_at": time.time() + 3600,
     }))
-    assert client.get("/api/paas/workspaces").json()["workspaces"][0]["id"] == 7
-    assert client.get("/api/paas/workspaces/7/accesses").json()["accesses"][0]["id"] == 25
+    workspace = client.get("/api/paas/workspaces").json()["workspaces"][0]
+    assert workspace["id"] == 7
+    assert workspace["portal_url"] == "https://www.apporo.ai/woow#/workspace/7"
+    access = client.get("/api/paas/workspaces/7/accesses").json()["accesses"][0]
+    assert access["id"] == 25
+    assert access["portal_url"] == "https://www.apporo.ai/woow#/workspace/7/security-access/25/overview"
     review = client.get("/api/paas/accesses/25/review")
     assert review.status_code == 200
     assert review.json()["ready"] is True
     assert review.json()["access"]["routes"][0]["hostname"] == "ha.example.com"
+    assert review.json()["portal_access_url"] == (
+        "https://www.apporo.ai/woow#/workspace/7/security-access/25/access")
+    assert review.json()["portal_routes_url"] == (
+        "https://www.apporo.ai/woow#/workspace/7/security-access/25/application")
     assert all("tunnel-token" not in path for path, _ in fake_paas)
 
 
@@ -181,7 +189,7 @@ def test_zero_seat_plan_still_blocks_protected_route(client, fake_paas, tmp_path
     fake_paas.detail["subscription"].update(ac_max_access_seats=0, ac_used_access_seats=0)
     review = client.get("/api/paas/accesses/25/review").json()
     assert review["ready"] is False
-    assert any("沒有席次" in issue for issue in review["issues"])
+    assert any("no Access seats" in issue for issue in review["issues"])
     assert review["access"]["subscription"]["ac_max_access_seats"] == 0
     assert client.post("/api/paas/accesses/25/connect", json={"allow_public_routes": True}).status_code == 409
     assert all("tunnel-token" not in path for path, _ in fake_paas)
@@ -200,6 +208,8 @@ def test_protected_subscription_claims_and_installs_token(client, fake_paas, fak
     assert fake_supervisor.options["tunnel_token"] == "PRIVATE_TUNNEL_TOKEN"
     assert fake_supervisor.restarted is True
     assert any("tunnel-token?instance_uid=" in path for path, _ in fake_paas)
+    assert any("instance_label=Apporo CF Tunnel Web (HA add-on)" in unquote_plus(path)
+               for path, _ in fake_paas)
     state = json.loads((tmp_path / "link.json").read_text())
     assert state["connection"]["access_id"] == 25
     assert state["instance_uid"]
@@ -218,7 +228,7 @@ def test_config_cannot_remove_managed_token(client, fake_paas, fake_supervisor, 
         "external_hostname": "ha.example.com", "tunnel_token": "",
     })
     assert res.status_code == 409
-    assert "解除綁定" in res.json()["detail"]
+    assert "release the binding" in res.json()["detail"]
     assert fake_supervisor.options["tunnel_token"] == "PRIVATE_TUNNEL_TOKEN"
     assert not fake_supervisor.restarted
     assert client.get("/api/paas/bootstrap").json()["connection"]["access_id"] == 25
@@ -253,6 +263,7 @@ def test_supervisor_rejection_releases_new_binding(client, fake_paas, fake_super
     monkeypatch.setattr(supervisor, "set_options", rejected)
     response = client.post("/api/paas/accesses/25/connect")
     assert response.status_code == 502
+    assert "add-on configuration could not be written" in response.json()["detail"]
     assert any("/tunnel-binding?instance_uid=" in path for path, _ in fake_paas)
     assert fake_supervisor.restarted is False
 
@@ -275,7 +286,8 @@ def test_zero_seat_public_route_needs_explicit_confirmation_then_connects(
     assert review.json()["ready"] is True
     assert review.json()["public_routes"] == ["ha.example.com"]
     assert review.json()["access"]["routes"][0]["public"] is True
-    assert client.post("/api/paas/accesses/25/connect").status_code == 409
+    denied = client.post("/api/paas/accesses/25/connect")
+    assert denied.status_code == 409 and "public hostnames" in denied.json()["detail"]
     assert all("tunnel-token" not in path for path, _ in fake_paas)
     assert "tunnel_token" not in fake_supervisor.options
 
@@ -301,7 +313,7 @@ def test_mixed_routes_require_seats_for_protected_route(client, fake_paas, tmp_p
     review = client.get("/api/paas/accesses/25/review").json()
     assert review["ready"] is False
     assert review["public_routes"] == ["public.example.com"]
-    assert any("沒有席次" in issue for issue in review["issues"])
+    assert any("no Access seats" in issue for issue in review["issues"])
     assert client.post("/api/paas/accesses/25/connect", json={"allow_public_routes": True}).status_code == 409
     assert all("tunnel-token" not in path for path, _ in fake_paas)
 
@@ -373,6 +385,8 @@ def test_unpaid_draft_subscription_blocks_claim(client, fake_paas, tmp_path):
     fake_paas.detail["subscription"]["state"] = "draft"
     response = client.post("/api/paas/accesses/25/connect")
     assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "The subscription is not valid. Start or renew it in the Apporo portal.")
     assert all("tunnel-token" not in path for path, _ in fake_paas)
 
 
@@ -384,7 +398,7 @@ def test_published_access_without_login_method_is_explained_and_blocked(client, 
     fake_paas.detail["routes"][0].update(login_email_otp=False, login_google=False)
     review = client.get("/api/paas/accesses/25/review").json()
     assert review["ready"] is False
-    assert any("登入方式" in issue for issue in review["issues"])
+    assert any("login method" in issue for issue in review["issues"])
     assert client.post("/api/paas/accesses/25/connect").status_code == 409
     assert all("tunnel-token" not in path for path, _ in fake_paas)
 
@@ -398,7 +412,7 @@ def test_disconnect_waits_for_restart_and_stopped_tunnel_before_release(client, 
         "refresh_token": "PRIVATE_REFRESH_TOKEN",
         "expires_at": time.time() + 3600,
         "instance_uid": "addon-instance-1",
-        "connection": {"access_id": 25, "workspace_id": 7, "name": "家用 HA"},
+        "connection": {"access_id": 25, "workspace_id": 7, "name": "Home HA"},
     }))
     fake_supervisor.options["tunnel_token"] = "PRIVATE_TUNNEL_TOKEN"
     start = client.post("/api/paas/disconnect")
@@ -408,7 +422,8 @@ def test_disconnect_waits_for_restart_and_stopped_tunnel_before_release(client, 
     assert all("tunnel-binding" not in path for path, _ in fake_paas)
     # Supervisor has saved new options, but the old cloudflared process may
     # still be serving traffic until the add-on actually restarts.
-    assert client.post("/api/paas/disconnect/finish").status_code == 409
+    waiting = client.post("/api/paas/disconnect/finish")
+    assert waiting.status_code == 409 and "add-on to restart" in waiting.json()["detail"]
     assert all("tunnel-binding" not in path for path, _ in fake_paas)
 
     monkeypatch.setattr(paas, "_PROCESS_RUN_ID", "next-addon-process")
@@ -417,7 +432,8 @@ def test_disconnect_waits_for_restart_and_stopped_tunnel_before_release(client, 
         return SimpleNamespace(metrics_reachable=True)
 
     monkeypatch.setattr(paas.metrics, "tunnel_status", running)
-    assert client.post("/api/paas/disconnect/finish").status_code == 409
+    still_running = client.post("/api/paas/disconnect/finish")
+    assert still_running.status_code == 409 and "still running" in still_running.json()["detail"]
     assert all("tunnel-binding" not in path for path, _ in fake_paas)
 
     async def stopped():
@@ -437,7 +453,7 @@ def test_external_probe_rejects_private_hostname_without_network_call(client, fa
         "refresh_token": "PRIVATE_REFRESH_TOKEN",
         "expires_at": time.time() + 3600,
         "instance_uid": "addon-instance-1",
-        "connection": {"access_id": 25, "workspace_id": 7, "name": "家用 HA"},
+        "connection": {"access_id": 25, "workspace_id": 7, "name": "Home HA"},
     }))
     fake_paas.detail["routes"][0]["hostname"] = "127.0.0.1"
     response = client.get("/api/paas/connection/status?probe=true")
@@ -505,7 +521,7 @@ def test_account_cannot_revoke_while_connector_is_bound(client, fake_paas, tmp_p
         "access_token": "PRIVATE_ACCESS_TOKEN",
         "refresh_token": "PRIVATE_REFRESH_TOKEN",
         "expires_at": time.time() + 3600,
-        "connection": {"access_id": 25, "workspace_id": 7, "name": "家用 HA"},
+        "connection": {"access_id": 25, "workspace_id": 7, "name": "Home HA"},
     }))
     assert client.post("/api/paas/authorization/revoke").status_code == 409
     assert not fake_paas
