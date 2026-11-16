@@ -1,7 +1,7 @@
 #!/command/with-contenv bashio
 # shellcheck shell=bash
 # ==============================================================================
-# Home Assistant App (Add-on): Cloudflared
+# Home Assistant Add-on: Apporo CF Tunnel Web
 # Runs the Cloudflare Tunnel for Home Assistant
 # ==============================================================================
 # Protect restored credentials before any config read, network call or UI.
@@ -26,7 +26,7 @@ if ! bashio::config.has_value 'tunnel_token'; then
     rm -f "${CLOUDFLARED_TOKEN_FILE:-/data/tunnel-token}"
 fi
 
-# WOOWTECH Web GUI patch: when the add-on is completely unconfigured the
+# Web GUI patch: when the add-on is completely unconfigured the
 # prepare script skips the tunnel setup (instead of exiting fatally like
 # upstream) so the Web GUI stays reachable for first-time setup. Idle here
 # until the user saves a configuration and the add-on restarts.
@@ -36,7 +36,7 @@ if [ -f "${WEBGUI_UNCONFIGURED_MARKER:-/tmp/webgui-unconfigured}" ]; then
     exec sleep infinity
 fi
 
-# WOOWTECH Web GUI patch: the prepare step failed (see the error above in
+# Web GUI patch: the prepare step failed (see the error above in
 # this log). Upstream would halt the whole container here; keep the Web GUI
 # alive instead so the configuration can be fixed in the browser, and retry
 # the setup periodically so transient failures (e.g. network not up yet

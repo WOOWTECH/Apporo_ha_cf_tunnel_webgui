@@ -37,12 +37,14 @@ RUN ["/build-webgui.sh"]
 
 CMD ["/run.sh"]
 
-# Build arguments
+# Build arguments. home-assistant/builder passes only BUILD_ARCH, BUILD_FROM
+# and BUILD_VERSION (and sets the io.hass.* labels from config.yaml itself),
+# so name, description and repository default to this add-on's own values.
 ARG BUILD_DATE
-ARG BUILD_DESCRIPTION
-ARG BUILD_NAME
+ARG BUILD_DESCRIPTION="Connect an Apporo Security Access (Cloudflare Tunnel) to Home Assistant without opening ports, with a Web GUI"
+ARG BUILD_NAME="Apporo CF Tunnel Web"
 ARG BUILD_REF
-ARG BUILD_REPOSITORY
+ARG BUILD_REPOSITORY="WOOWTECH/apporo_ha_cf_tunnel_web"
 ARG BUILD_VERSION
 
 # Labels
@@ -52,11 +54,11 @@ LABEL \
     io.hass.arch="${BUILD_ARCH}" \
     io.hass.type="addon" \
     io.hass.version="${BUILD_VERSION}" \
-    maintainer="WOOWTECH <https://github.com/WOOWTECH>" \
+    maintainer="Apporo <info@apporo.ai>" \
     org.opencontainers.image.title="${BUILD_NAME}" \
     org.opencontainers.image.description="${BUILD_DESCRIPTION}" \
-    org.opencontainers.image.vendor="WOOWTECH <https://github.com/WOOWTECH>" \
-    org.opencontainers.image.authors="WOOWTECH <https://github.com/WOOWTECH>" \
+    org.opencontainers.image.vendor="Apporo" \
+    org.opencontainers.image.authors="Apporo <info@apporo.ai>" \
     org.opencontainers.image.licenses="MIT" \
     org.opencontainers.image.url="https://github.com/${BUILD_REPOSITORY}" \
     org.opencontainers.image.source="https://github.com/${BUILD_REPOSITORY}" \

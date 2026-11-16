@@ -1,6 +1,6 @@
 #!/bin/sh
 # ==============================================================================
-# Home Assistant App (Add-on): Cloudflared
+# Home Assistant Add-on: Apporo CF Tunnel Web
 #
 # Container build of Cloudflared
 # ==============================================================================

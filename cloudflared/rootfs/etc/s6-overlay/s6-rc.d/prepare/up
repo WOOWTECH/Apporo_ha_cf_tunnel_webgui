@@ -1,4 +1,4 @@
-# WOOWTECH Web GUI patch: upstream runs prepare/run.sh directly, so any
+# Web GUI patch: upstream runs prepare/run.sh directly, so any
 # setup failure (bashio::exit.nok) halts the whole container — taking the
 # Web GUI down with it and locking the user out of the tool they would use
 # to fix the problem. Capture the failure in a marker instead: run.sh (CMD)

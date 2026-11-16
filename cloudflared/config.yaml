@@ -1,14 +1,15 @@
 ---
-name: Woow Cloudflared
-version: 1.1.3
-breaking_versions:
-  - 5.3.7
-  - 6.0.0
-slug: cloudflared
-description: "Use a Cloudflare Tunnel to remotely
-  connect to Home Assistant without opening any ports — now with a Web GUI"
-url: "https://github.com/WOOWTECH/Woow_ha_cloudflare_tunnel_webgui"
-image: "ghcr.io/woowtech/{arch}-addon-cloudflared-webgui"
+# Forked from WOOWTECH's Cloudflared add-on with a Web GUI (1.1.3). Its own
+# slug and image make it a separate add-on: it installs next to WOOW's (slug
+# cloudflared) instead of replacing it, and it starts its own version line.
+name: Apporo CF Tunnel Web
+version: 1.0.0
+slug: apporo_cf_tunnel_web
+description: >-
+  Connect an Apporo Security Access (Cloudflare Tunnel) to Home Assistant
+  without opening ports, with a Web GUI
+url: "https://github.com/WOOWTECH/apporo_ha_cf_tunnel_web"
+image: "ghcr.io/woowtech/{arch}-addon-apporo-cf-tunnel-web"
 startup: services
 init: false
 hassio_api: true
@@ -17,7 +18,7 @@ ingress: true
 ingress_port: 8099
 ingress_panel: true
 panel_icon: mdi:cloud-lock-outline
-panel_title: Cloudflared
+panel_title: Apporo Tunnel
 arch:
   - aarch64
   - amd64

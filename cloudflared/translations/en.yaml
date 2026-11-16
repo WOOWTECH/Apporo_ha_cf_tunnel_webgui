@@ -42,7 +42,9 @@ configuration:
   tunnel_token:
     name: Cloudflare Tunnel Token
     description: >-
-      When set all other options will be ignored. Use this option if you set up
-      the tunnel with the Cloudflare Dashboard.
+      When set, all other options are ignored. Connecting an Apporo Security
+      Access on the Apporo Link page of the Web GUI fills it in; release the
+      binding there before you change it. You can also paste the token of a
+      tunnel you set up in the Cloudflare Dashboard.
 network:
-  36500/tcp: Metrics Web Interface (36500/tcp)
+  36500/tcp: Metrics (36500/tcp), loopback only; a host port here does not expose them

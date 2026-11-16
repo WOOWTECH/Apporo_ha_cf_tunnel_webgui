@@ -1,6 +1,6 @@
 #!/bin/sh
 # ==============================================================================
-# Home Assistant App (Add-on): Woow Cloudflared
+# Home Assistant Add-on: Apporo CF Tunnel Web
 #
 # Container build of the Web GUI backend runtime (Python + FastAPI)
 # ==============================================================================

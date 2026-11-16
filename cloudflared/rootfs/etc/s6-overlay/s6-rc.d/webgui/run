@@ -1,7 +1,7 @@
 #!/command/with-contenv bashio
 # shellcheck shell=bash
 # ==============================================================================
-# Home Assistant App (Add-on): Woow Cloudflared
+# Home Assistant Add-on: Apporo CF Tunnel Web
 #
 # Runs the Web GUI backend (FastAPI, served through Home Assistant Ingress).
 # Started in parallel with the 'prepare' oneshot so the GUI is reachable
@@ -11,7 +11,7 @@
 cloudflared-credential-guard || exit 1
 umask 077
 
-bashio::log.info "Starting Woow Cloudflared (ingress port 8099)..."
+bashio::log.info "Starting Apporo CF Tunnel Web (ingress port 8099)..."
 
 cd /opt/webgui || bashio::exit.nok "Web GUI files are missing"
 

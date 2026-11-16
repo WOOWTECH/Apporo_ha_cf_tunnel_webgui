@@ -1,10 +1,13 @@
 ---
-name: Report an issue with Home Assistant App (Add-On) Cloudflared
-description: Report an issue with Home Assistant App (Add-On) Cloudflared.
+name: Report an issue with the Apporo CF Tunnel Web add-on
+description: Report an issue with the Apporo CF Tunnel Web add-on for Home Assistant.
 body:
   - type: markdown
     attributes:
-      value: 'This issue form is for reporting bugs only!'
+      value: >-
+        This issue form is for reporting bugs only! Never paste a tunnel
+        token, a cert.pem or a tunnel.json: they give full control of the
+        tunnel.
   - type: textarea
     validations:
       required: true
@@ -22,18 +25,28 @@ body:
     validations:
       required: true
     attributes:
-      label: What version of Cloudflared has the issue?
-      placeholder: 2.x.x
+      label: What version of Apporo CF Tunnel Web has the issue?
+      placeholder: 1.x.x
       description: >-
         Can be found in:
-        [Settings -> Add-ons ->
-        Cloudflared](https://my.home-assistant.io/redirect/supervisor_addon/?addon=9074a9fa_cloudflared).
+        [Settings -> Add-ons -> Apporo CF Tunnel
+        Web](https://my.home-assistant.io/redirect/supervisor_addon/?addon=9f6adb2e_apporo_cf_tunnel_web).
   - type: input
     attributes:
-      label: What was the last working version of Cloudflared?
-      placeholder: 2.x.x
+      label: What was the last working version of Apporo CF Tunnel Web?
+      placeholder: 1.x.x
       description: >
         If known, otherwise leave blank.
+  - type: dropdown
+    validations:
+      required: true
+    attributes:
+      label: How is the tunnel set up?
+      options:
+        - Apporo Link (Apporo Security Access)
+        - Tunnel token from the Cloudflare Dashboard
+        - Local tunnel created by the add-on
+        - Not set up yet
   - type: dropdown
     validations:
       required: true
@@ -50,9 +63,10 @@ body:
       value: "# Details"
   - type: textarea
     attributes:
-      label: App (Add-on) YAML Configuration
+      label: Add-on YAML Configuration
       description: |
-        Please provide your whole app (add-on) configuration as YAML, you can hide any sensitive information.
+        Please provide your whole add-on configuration as YAML, without the
+        tunnel_token and any other sensitive information.
       render: yaml
   - type: textarea
     attributes:
@@ -67,7 +81,10 @@ body:
       description: |
         Please tell us exactly how to reproduce your issue.
         Provide clear and concise step by step instructions and add code snippets if needed.
-        value: | 1. 2. 3.
+      value: |
+        1.
+        2.
+        3.
         ...
   - type: textarea
     attributes:

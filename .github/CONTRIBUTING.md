@@ -1,8 +1,8 @@
 # Contributing
 
 When contributing to this repository, please first discuss the change you wish
-to make via issue, email, or any other method with the owners of this repository
-before making a change.
+to make via issue, email ([info@apporo.ai](mailto:info@apporo.ai)), or any other
+method with the owners of this repository before making a change.
 
 Please note we have a [code of conduct][coc], please follow it in all your interactions
 with the project.
@@ -26,5 +26,5 @@ Even better: You could submit a pull request with a fix / new feature!
    the reviewer to merge it for you.
 
 [coc]: /.github/CODE_OF_CONDUCT.md
-[github]: https://github.com/homeassistant-apps/app-cloudflared/issues
-[prs]: https://github.com/homeassistant-apps/app-cloudflared/pulls
+[github]: https://github.com/WOOWTECH/apporo_ha_cf_tunnel_web/issues
+[prs]: https://github.com/WOOWTECH/apporo_ha_cf_tunnel_web/pulls

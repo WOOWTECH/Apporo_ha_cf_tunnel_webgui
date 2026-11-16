@@ -1,7 +1,7 @@
 #!/command/with-contenv bashio
 # shellcheck shell=bash
 # ==============================================================================
-# Home Assistant App (Add-on): Cloudflared
+# Home Assistant Add-on: Apporo CF Tunnel Web
 #
 # Configures the Cloudflare Tunnel and creates the needed DNS entry under the
 # given hostname(s)
@@ -28,7 +28,7 @@ validateConfigAndSetVars() {
 
     # Check for minimum configuration options
     #
-    # WOOWTECH Web GUI patch: upstream exits with a fatal error here, which
+    # Web GUI patch: upstream exits with a fatal error here, which
     # would stop the whole container — including the Web GUI — leaving the
     # user unable to do their first-time setup from the GUI. Instead, mark
     # the add-on as unconfigured and skip the tunnel setup; run.sh will idle
@@ -424,7 +424,7 @@ setCloudflaredLogLevel() {
 main() {
     bashio::log.trace "${FUNCNAME[0]}"
 
-    # WOOWTECH Web GUI patch: clear a possible stale marker so the
+    # Web GUI patch: clear a possible stale marker so the
     # unconfigured check re-evaluates the current options on every start.
     rm -f /tmp/webgui-unconfigured
 

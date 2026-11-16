@@ -8,14 +8,96 @@ on:
       - main
     paths:
       - "cloudflared/**"
-  # PRs run unfiltered so the ruleset's required checks always report (release-gating #88).
+      - ".github/workflows/build.yaml"
+  # Pull requests run unfiltered, so a required check always reports.
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  # A new push to a pull request cancels its older run. Other runs queue per
+  # branch and are never cancelled once started, so on main each run's version
+  # guard sees the tags an earlier run pushed, and no version is published
+  # twice. GitHub keeps one waiting run per group: a newer run replaces it, and
+  # that newer run builds the same or a later main.
+  group: >-
+    ${{ github.event_name == 'pull_request'
+    && format('build-pr-{0}', github.ref)
+    || format('build-{0}', github.ref) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  python:
+    name: Python and runtime script tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: ⤵️ Check out code from GitHub
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          # The add-on image runs the Web GUI on Alpine's Python 3.14.
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            cloudflared/webgui/requirements-dev.txt
+            cloudflared/webgui/backend/requirements.txt
+
+      - name: Install test dependencies
+        # PyYAML: cloudflared/tests/test_addon_identity.py reads config.yaml.
+        run: python -m pip install -r cloudflared/webgui/requirements-dev.txt PyYAML==6.0.3
+
+      - name: Web GUI tests
+        working-directory: cloudflared/webgui
+        run: python -m pytest -q
+
+      - name: Add-on tests (identity, credential guard, secret logging)
+        run: python -m pytest -q cloudflared/tests
+
+      - name: API error probe (synthetic Supervisor, no secret in any response)
+        run: python cloudflared/tests/ha05_api_error_probe.py cloudflared/webgui
+
+      - name: Startup script tests (token file, resilience patches)
+        run: |
+          bash cloudflared/tests/test_token_safety.sh
+          bash cloudflared/tests/test_resilience_patches.sh
+
+  frontend:
+    name: Frontend tests and build
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: cloudflared/webgui/frontend
+    steps:
+      - name: ⤵️ Check out code from GitHub
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # The image builds the frontend on node:22-alpine.
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: cloudflared/webgui/frontend/package-lock.json
+
+      - name: Install dependencies (lockfile only, no lifecycle scripts, as in the image)
+        run: npm ci --ignore-scripts
+
+      - name: Unit tests (vitest)
+        run: npm test
+
+      - name: Type check and build
+        run: npm run build
+
   build:
     name: Build ${{ matrix.arch }} add-on
-    runs-on: ubuntu-latest
+    needs:
+      - python
+      - frontend
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
@@ -25,115 +107,77 @@ jobs:
         arch:
           - aarch64
           - amd64
+    env:
+      ARCH: ${{ matrix.arch }}
+      # Only main publishes (a push, or a manual run on main). Everything else,
+      # pull requests included, builds with --test, which never pushes.
+      PUBLISH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     steps:
       - name: ⤵️ Check out code from GitHub
         uses: actions/checkout@v4
 
-      - name: Set up Python for disclosure regressions
-        if: matrix.arch == 'amd64'
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Run response and startup disclosure regressions
-        if: matrix.arch == 'amd64'
-        working-directory: cloudflared/webgui
+      - name: ℹ️ Read add-on version and image
+        id: addon
         run: |
-          python -m pip install -r requirements-dev.txt
-          python -m pytest -q tests/test_error_redaction.py tests/test_startup_redaction.py ../tests/test_secret_logging.py ../tests/test_credential_permissions.py
+          version="$(sed -n 's/^version:[[:space:]]*//p' cloudflared/config.yaml | tr -d "\"'")"
+          image="$(sed -n 's/^image:[[:space:]]*//p' cloudflared/config.yaml | tr -d "\"'")"
+          image="${image//\{arch\}/${ARCH}}"
+          if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ || ! "${image}" =~ ^ghcr\.io/[a-z0-9._/-]+$ ]]; then
+            echo "::error::Cannot read the version and image from cloudflared/config.yaml"
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "ref=${image}:${version}" >> "$GITHUB_OUTPUT"
+          echo "Add-on ${version}, image ${image}:${version}, publish: ${PUBLISH}"
 
       - name: 🏗 Set up QEMU
         uses: docker/setup-qemu-action@v3
 
       - name: 🔑 Login to GitHub Container Registry
-        if: github.event_name != 'pull_request'
+        if: env.PUBLISH == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: ℹ️ Read add-on version
-        id: version
-        run: |
-          version=$(sed -n 's/^version:[[:space:]]*//p' cloudflared/config.yaml | tr -d '"')
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "Add-on version: ${version}"
-
       - name: 🛡️ Guard against overwriting a published version tag
         id: guard
-        if: github.event_name != 'pull_request'
+        if: env.PUBLISH == 'true'
+        env:
+          REF: ${{ steps.addon.outputs.ref }}
         run: |
-          image="ghcr.io/woowtech/${{ matrix.arch }}-addon-cloudflared-webgui:${{ steps.version.outputs.version }}"
-          if docker manifest inspect "$image" > /dev/null 2>&1; then
+          if docker manifest inspect "${REF}" > /dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::${image} already exists — skipping publish. Bump the version in cloudflared/config.yaml to release."
+            echo "::warning::${REF} already exists, so nothing is published." \
+              "Bump the version in cloudflared/config.yaml to release."
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: 🚀 Build ${{ matrix.arch }} add-on
-        if: github.event_name == 'pull_request' || steps.guard.outputs.exists == 'false'
-        # 2026.02.1 is the last release with a matching amd64-builder image
-        # on GHCR. This is also what @master silently falls back to inside
-        # action.yml — the exact combo that built v1.0.0–v1.0.2. Newer tags
-        # (2026.03.x, 2026.06.0) cut the ref but never published an image,
-        # and SHA pins fail because the action feeds the ref straight into
-        # `docker pull amd64-builder:<ref>`.
+        id: build
+        if: env.PUBLISH != 'true' || steps.guard.outputs.exists == 'false'
+        # 2026.02.1 is the last release with a matching amd64-builder image on
+        # GHCR; newer tags have no image, and a SHA pin fails because the
+        # action pulls amd64-builder:<ref>. On main the builder pushes
+        # <version> and latest to the image in config.yaml.
         uses: home-assistant/builder@2026.02.1
         with:
           args: |
-            ${{ github.event_name == 'pull_request' && '--test' || '' }} \
+            ${{ env.PUBLISH != 'true' && '--test' || '' }} \
             --${{ matrix.arch }} \
             --target cloudflared \
             --addon
 
-      # The SBOM of this image is what the Upgrade comparison scans as the
-      # new version (pipeline #89, category 4): pinned Syft from the Store,
-      # uploaded as artifact upgrade-comparison-sbom-cloudflared-attempt-<run
-      # attempt>. The builder
-      # runs on the host docker daemon (docker driver, socket mounted), so
-      # the --test image stays there under the config.yaml image name. PR and
-      # main builds both take their cache from the published :latest image
-      # (the builder's "Init cache ... with tag latest"), so the PR image
-      # reuses the same layers the Release build does.
-      - name: SBOM for the upgrade comparison
-        if: github.event_name == 'pull_request' && matrix.arch == 'amd64'
-        uses: WOOWTECH/Woow_HA_App_Store/.github/actions/addon-sbom@main
-        with:
-          component: cloudflared
-          image: ghcr.io/woowtech/amd64-addon-cloudflared-webgui:${{ steps.version.outputs.version }}
-
-      # The same image is the new version of the upgrade test (pipeline
-      # #143, category 2): saved and uploaded as artifact
-      # upgrade-comparison-image-cloudflared-attempt-<run attempt>, so the
-      # comparison neither rebuilds it nor needs a PR tag on GHCR.
-      - name: Image for the upgrade test
-        if: github.event_name == 'pull_request' && matrix.arch == 'amd64'
-        uses: WOOWTECH/Woow_HA_App_Store/.github/actions/addon-image@main
-        with:
-          component: cloudflared
-          image: ghcr.io/woowtech/amd64-addon-cloudflared-webgui:${{ steps.version.outputs.version }}
-
-  # Upgrade comparison (pipeline #89): rules, inputs and re-runs are in the
-  # Store README, "升版比對與 `upgrade-notes.yaml`".
-  upgrade-comparison:
-    name: Upgrade comparison
-    permissions:
-      contents: read
-      actions: read
-    uses: WOOWTECH/Woow_HA_App_Store/.github/workflows/woow-addon-upgrade-check.yml@main
-    with:
-      sbom_artifact: upgrade-comparison-sbom-*
-      image_artifact: upgrade-comparison-image-*
-
-  # The App Store ships only published Releases (registry ref_policy: release).
-  # After the checks above pass on main, the Store's shared workflow publishes
-  # the Release for a config.yaml version that has none yet.
-  release:
-    name: Release
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: write
-    uses: WOOWTECH/Woow_HA_App_Store/.github/workflows/woow-addon-release.yml@main
+      # The builder runs on the host Docker daemon, so the image it built stays
+      # there under its config.yaml name, --test or not. The probe starts the
+      # image's Web GUI on its own Python with a synthetic Supervisor, offline.
+      - name: Smoke test the amd64 image (Web GUI API and static files)
+        if: matrix.arch == 'amd64' && steps.build.outcome == 'success'
+        env:
+          REF: ${{ steps.addon.outputs.ref }}
+        run: |
+          docker run --rm --network none \
+            --volume "${PWD}/cloudflared/tests/ha05_api_error_probe.py:/probe.py:ro" \
+            --entrypoint python3 "${REF}" /probe.py

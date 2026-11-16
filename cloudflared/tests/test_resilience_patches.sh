@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Regression tests for the two WOOWTECH resilience patches in the forked
+# Regression tests for the two Web GUI resilience patches in the forked
 # add-on core:
 #
 #   1. s6-rc.d/prepare/up   — a failing prepare must NOT halt the container
@@ -14,21 +14,33 @@
 # the REAL scripts against a stubbed bashio / cloudflared / sleep so the
 # control flow is covered without a live tunnel.
 #
+# No root needed: the scripts hard-code /tmp/webgui-prepare-failed and
+# /etc/s6-overlay/s6-rc.d/prepare/run.sh, so the harness runs copies of the
+# committed files with only those two paths moved into a temporary
+# directory, and fails if a path it expects is no longer in a script.
+#
 # Usage:  bash cloudflared/tests/test_resilience_patches.sh
 # =============================================================================
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-RUN_SH="${REPO_ROOT}/cloudflared/rootfs/run.sh"
+RUN_SH_SOURCE="${REPO_ROOT}/cloudflared/rootfs/run.sh"
 UP_FILE="${REPO_ROOT}/cloudflared/rootfs/etc/s6-overlay/s6-rc.d/prepare/up"
 
-UNCONFIGURED_MARKER=/tmp/webgui-unconfigured
-FAILED_MARKER=/tmp/webgui-prepare-failed
-PREPARE_PATH=/etc/s6-overlay/s6-rc.d/prepare/run.sh
+# The absolute paths the add-on uses inside its container.
+FAILED_MARKER_IN_IMAGE=/tmp/webgui-prepare-failed
+PREPARE_PATH_IN_IMAGE=/etc/s6-overlay/s6-rc.d/prepare/run.sh
 
 WORK="$(mktemp -d)"
+FAILED_MARKER="${WORK}/webgui-prepare-failed"
+PREPARE_PATH="${WORK}/prepare-run.sh"
+RUN_SH="${WORK}/run.sh"
 SENTINEL="${WORK}/cloudflared-was-exec'd"
 ATTEMPTS="${WORK}/prepare-attempts"
+# run.sh reads these two paths from the environment (default under /tmp and /data).
+export WEBGUI_UNCONFIGURED_MARKER="${WORK}/webgui-unconfigured"
+export CLOUDFLARED_TOKEN_FILE="${WORK}/tunnel-token"
+UNCONFIGURED_MARKER="${WEBGUI_UNCONFIGURED_MARKER}"
 
 PASS=0
 FAIL=0
@@ -38,11 +50,15 @@ bad()  { printf '  \033[31mFAIL\033[0m  %s\n' "$1"; FAIL=$((FAIL + 1)); }
 head_() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
 cleanup() {
-    rm -f "$UNCONFIGURED_MARKER" "$FAILED_MARKER"
     rm -rf "$WORK"
-    rm -f "$PREPARE_PATH"
 }
 trap cleanup EXIT
+
+# Move the two in-image paths into $WORK (stdin to stdout).
+relocate() {
+    sed -e "s|${FAILED_MARKER_IN_IMAGE}|${FAILED_MARKER}|g" \
+        -e "s|${PREPARE_PATH_IN_IMAGE}|${PREPARE_PATH}|g"
+}
 
 # ── stub environment ──────────────────────────────────────────────────
 
@@ -79,10 +95,9 @@ esac
 STUB
 chmod +x "${WORK}/bin/cloudflared" "${WORK}/bin/sleep"
 
-# Install a prepare script at the absolute path run.sh's retry loop calls.
+# Install a prepare script at the path run.sh's retry loop calls.
 # $1 = number of leading attempts that should fail (999 = always fail).
 install_prepare() {
-    mkdir -p "$(dirname "$PREPARE_PATH")"
     cat > "$PREPARE_PATH" <<STUB
 #!/bin/sh
 n=\$(cat "${ATTEMPTS}" 2>/dev/null || echo 0)
@@ -106,8 +121,29 @@ run_runsh() {
 }
 
 reset_state() {
-    rm -f "$UNCONFIGURED_MARKER" "$FAILED_MARKER" "$SENTINEL" "$ATTEMPTS"
+    rm -f "$UNCONFIGURED_MARKER" "$FAILED_MARKER" "$SENTINEL" "$ATTEMPTS" "$CLOUDFLARED_TOKEN_FILE"
 }
+
+# ── 0. the committed scripts still use the paths this harness moves ───
+
+head_ "harness: the committed scripts are the ones under test"
+
+for path in "$FAILED_MARKER_IN_IMAGE" "$PREPARE_PATH_IN_IMAGE"; do
+    for script in "$UP_FILE" "$RUN_SH_SOURCE"; do
+        if grep -qF -- "$path" "$script"; then
+            ok "${script#"${REPO_ROOT}/"} uses ${path}"
+        else
+            bad "${script#"${REPO_ROOT}/"} no longer uses ${path}; update this harness"
+        fi
+    done
+done
+
+relocate < "$RUN_SH_SOURCE" > "$RUN_SH"
+if grep -qF -e "$FAILED_MARKER_IN_IMAGE" -e "$PREPARE_PATH_IN_IMAGE" "$RUN_SH"; then
+    bad "run.sh copy still points at an in-image path"
+else
+    ok "run.sh copy runs entirely inside the temporary directory"
+fi
 
 # ── 1. the s6 'up' wrapper ─────────────────────────────────────────────
 
@@ -115,7 +151,7 @@ head_ "s6 prepare/up wrapper (a failing setup must not halt the container)"
 
 # Extract the shell command the execline 'up' line runs, so the test exercises
 # the committed wrapper rather than a copy of it.
-UP_CMD="$(grep -v '^#' "$UP_FILE" | grep -m1 'prepare/run.sh' | sed 's|^/bin/sh -ec "||; s|"$||')"
+UP_CMD="$(grep -v '^#' "$UP_FILE" | grep -m1 'prepare/run.sh' | sed 's|^/bin/sh -ec "||; s|"$||' | relocate)"
 if [ -z "$UP_CMD" ]; then
     bad "could not extract the wrapper command from ${UP_FILE}"
 else
@@ -195,7 +231,7 @@ esac
 [ -f "$SENTINEL" ] && ok "tunnel starts once setup recovers" \
                    || bad "tunnel never started after recovery"
 
-head_ "run.sh: healthy start is unchanged from upstream"
+head_ "run.sh: healthy start runs the tunnel"
 
 reset_state
 out="$(run_runsh 5)"
@@ -207,13 +243,19 @@ if [ -f "$SENTINEL" ]; then
         *"--no-autoupdate"*) ok "keeps upstream flag --no-autoupdate" ;;
         *) bad "missing --no-autoupdate (upstream parity broken)" ;;
     esac
+    # Loopback only: the Web GUI reads the metrics (dashboard status) from
+    # inside the same network namespace.
     case "$args" in
-        *"--metrics=0.0.0.0:36500"*) ok "keeps upstream metrics endpoint" ;;
-        *) bad "missing --metrics (dashboard status would break)" ;;
+        *"--metrics=127.0.0.1:36500"*) ok "metrics endpoint on loopback" ;;
+        *) bad "missing --metrics=127.0.0.1:36500 (dashboard status would break)" ;;
     esac
     case "$args" in
-        *"run --token=STUB_TOKEN"*) ok "token mode passes the token through" ;;
-        *) bad "token not passed through; got: ${args}" ;;
+        *"run --token-file=${CLOUDFLARED_TOKEN_FILE}"*) ok "token mode passes the token as a file" ;;
+        *) bad "token file not passed through; got: ${args}" ;;
+    esac
+    case "$args" in
+        *"STUB_TOKEN"*) bad "the token value itself is on the cloudflared command line" ;;
+        *) ok "the token value is not on the cloudflared command line" ;;
     esac
 fi
 
