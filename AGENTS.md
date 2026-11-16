@@ -17,10 +17,19 @@ platform link goes to Apporo Security Access on `https://www.apporo.ai`.
    `cloudflared/config.yaml` and add a top entry to `cloudflared/CHANGELOG.md`.
    After the merge, CI pushes
    `ghcr.io/woowtech/{arch}-addon-apporo-cf-tunnel-web:<version>`. A published
-   version is never rebuilt, so a merge without a bump publishes nothing.
+   version is never rebuilt, so a merge without a bump publishes nothing. When
+   CI cannot ask GHCR whether the version exists, the build job fails rather
+   than publish; re-run it once GHCR answers.
    Home Assistant offers the update as soon as `main` carries the new version,
    and installs fail until the image is pushed: merge a bump only with every
    check green.
+4. **Keep every image package public.** The Supervisor pulls add-on images
+   without credentials. The amd64 and aarch64 packages are public, and a public
+   package cannot be made private again. GitHub can create a new package (an
+   added architecture or image name) as private: open it under
+   `https://github.com/users/WOOWTECH/packages`, choose Package settings >
+   Change visibility > Public, and check that `docker pull` of its new tag
+   works on a machine that is not logged in to ghcr.io.
 
 ## Keep fixed
 

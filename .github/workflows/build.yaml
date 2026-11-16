@@ -126,8 +126,11 @@ jobs:
             echo "::error::Cannot read the version and image from cloudflared/config.yaml"
             exit 1
           fi
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "ref=${image}:${version}" >> "$GITHUB_OUTPUT"
+          {
+            echo "version=${version}"
+            echo "image=${image}"
+            echo "ref=${image}:${version}"
+          } >> "$GITHUB_OUTPUT"
           echo "Add-on ${version}, image ${image}:${version}, publish: ${PUBLISH}"
 
       - name: 🏗 Set up QEMU
@@ -141,19 +144,71 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Fails closed: a version counts as unpublished only when GHCR answers
+      # 404 with MANIFEST_UNKNOWN or NAME_UNKNOWN. Any other answer (an auth
+      # error, a rate limit, a 5xx, a timeout) is retried and then fails the
+      # job, so a GHCR outage never gets a published version pushed again. The
+      # registry API is asked directly because `docker manifest inspect`
+      # reports a 401 or a non-JSON 5xx as "no such manifest" as well.
       - name: 🛡️ Guard against overwriting a published version tag
         id: guard
         if: env.PUBLISH == 'true'
         env:
+          IMAGE: ${{ steps.addon.outputs.image }}
+          VERSION: ${{ steps.addon.outputs.version }}
           REF: ${{ steps.addon.outputs.ref }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if docker manifest inspect "${REF}" > /dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::${REF} already exists, so nothing is published." \
-              "Bump the version in cloudflared/config.yaml to release."
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
+          repo="${IMAGE#ghcr.io/}"
+          # Ask for every manifest type: for a published image whose type the
+          # Accept header leaves out, GHCR answers 404 MANIFEST_UNKNOWN too.
+          accept="application/vnd.oci.image.index.v1+json"
+          accept+=",application/vnd.oci.image.manifest.v1+json"
+          accept+=",application/vnd.docker.distribution.manifest.list.v2+json"
+          accept+=",application/vnd.docker.distribution.manifest.v2+json"
+          body="${RUNNER_TEMP}/guard-manifest.json"
+          # Prints the HTTP status of the manifest request, with the answer in
+          # ${body}; fails when there is no token or no answer (curl says why).
+          manifest_status() {
+            local token
+            # Credentials reach curl through --config files, not its arguments.
+            token="$(curl -sS --fail --max-time 30 \
+              --config <(printf 'user = "%s:%s"\n' "${GITHUB_REPOSITORY_OWNER}" "${GITHUB_TOKEN}") \
+              "https://ghcr.io/token?service=ghcr.io&scope=repository:${repo}:pull" | jq -er .token)" || return 1
+            curl -sS --max-time 30 --output "${body}" --write-out '%{http_code}' \
+              --config <(printf 'header = "Authorization: Bearer %s"\n' "${token}") \
+              --header "Accept: ${accept}" "https://ghcr.io/v2/${repo}/manifests/${VERSION}"
+          }
+          for attempt in 1 2 3; do
+            rm -f "${body}"
+            if status="$(manifest_status)"; then
+              if [[ "${status}" == 200 ]]; then
+                echo "exists=true" >> "$GITHUB_OUTPUT"
+                echo "::warning::${REF} already exists, so nothing is published." \
+                  "Bump the version in cloudflared/config.yaml to release."
+                exit 0
+              fi
+              # A 404 that names the Accept header means the image exists in a
+              # type this request left out, so it does not count as absent.
+              if [[ "${status}" == 404 ]] && jq -e '
+                  (.errors | length > 0) and all(.errors[];
+                    (.code == "MANIFEST_UNKNOWN" or .code == "NAME_UNKNOWN")
+                    and ((.message // "") | test("accept"; "i") | not))
+                ' "${body}" > /dev/null 2>&1; then
+                echo "exists=false" >> "$GITHUB_OUTPUT"
+                echo "${REF} is not published yet, so this run publishes it."
+                exit 0
+              fi
+              answer="HTTP ${status}: $(head -c 300 "${body}" 2>/dev/null | tr -d '\r\n')"
+            else
+              answer="no usable answer from ghcr.io, see curl's error above"
+            fi
+            echo "Attempt ${attempt} of 3: cannot tell whether ${REF} is published (${answer})"
+            if (( attempt < 3 )); then sleep 15; fi
+          done
+          echo "::error::Cannot tell whether ${REF} is published, so nothing is published." \
+            "Re-run the job once ghcr.io answers normally. Last answer: ${answer}"
+          exit 1
 
       - name: 🚀 Build ${{ matrix.arch }} add-on
         id: build

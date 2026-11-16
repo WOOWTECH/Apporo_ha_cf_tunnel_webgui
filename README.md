@@ -331,8 +331,12 @@ then builds the add-on for amd64 and aarch64 with
 image. Pull requests build without pushing. On `main`, it publishes
 `ghcr.io/woowtech/{arch}-addon-apporo-cf-tunnel-web:<version>` (and `latest`) for the version
 in `cloudflared/config.yaml`, unless that version is already published: a published version is
-never overwritten, so only a version bump reaches users. The rules for changes are in
-[AGENTS.md](AGENTS.md).
+never overwritten, so only a version bump reaches users. If GHCR cannot say whether the version
+exists, the job fails instead of publishing. The Supervisor pulls these images without
+credentials, so each package must be public, and both are. A package GitHub creates for a new
+architecture or image name can start private: make it public under Package settings > Change
+visibility (at `https://github.com/users/WOOWTECH/packages`) and check that an anonymous
+`docker pull` of its new tag works. The rules for changes are in [AGENTS.md](AGENTS.md).
 
 ### Merging from upstream
 

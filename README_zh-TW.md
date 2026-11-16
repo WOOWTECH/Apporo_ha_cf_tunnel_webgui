@@ -287,7 +287,11 @@ Build 工作流程（`.github/workflows/build.yaml`）會跑同樣的測試與�
 [home-assistant/builder](https://github.com/home-assistant/builder) 建置 amd64 與 aarch64 的附加元件，
 並對 amd64 映像檔做冒煙測試。Pull request 只建置不推送。在 `main` 上，它會依 `cloudflared/config.yaml`
 的版本發布 `ghcr.io/woowtech/{arch}-addon-apporo-cf-tunnel-web:<version>`（以及 `latest`），除非該版本已經
-發布過：已發布的版本絕不覆蓋，所以只有調升版本號才會送到使用者手上。修改規則見 [AGENTS.md](AGENTS.md)。
+發布過：已發布的版本絕不覆蓋，所以只有調升版本號才會送到使用者手上。若無法向 GHCR 確認該版本是否已發布，
+這個工作會直接失敗，不會發布。Supervisor 拉取映像檔時不帶任何憑證，所以每個套件都必須公開，目前兩個套件都已公開。
+GitHub 為新架構或新映像檔名稱建立的套件可能是私有的：請到 `https://github.com/users/WOOWTECH/packages`
+打開該套件，在 Package settings > Change visibility 改成 Public，並確認未登入 ghcr.io 時 `docker pull`
+新版本的標籤可以成功。修改規則見 [AGENTS.md](AGENTS.md)。
 
 ### 合併上游
 
