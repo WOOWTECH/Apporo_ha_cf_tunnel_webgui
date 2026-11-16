@@ -1,43 +1,46 @@
 # AGENTS.md
 
-Rules for every agent and person who changes this repository. The full
-release mechanism is described in the Woow_HA_App_Store README (section
-"版本策略與同步") and in ADR-0005 of the WOOW addon pipeline.
+Rules for every agent and person who changes this repository: Apporo CF Tunnel
+Web, a Home Assistant add-on (folder `cloudflared/`, slug
+`apporo_cf_tunnel_web`) forked from WOOWTECH's Woow Cloudflared 1.1.3. Its
+platform link goes to Apporo Security Access on `https://www.apporo.ai`.
 
-1. **`main` only changes through a pull request.** A ruleset blocks direct
-   pushes, force pushes and deleting the branch, and nobody can bypass it.
-   Push a branch, open a PR, wait for the required checks, then merge.
-2. **A PR that changes an addon version is a release.** Merging it publishes
-   that version to the WOOW App Store. It must pass every required check; the
-   checks are the approval, there is no human review step. Every PR runs
-   `Upgrade comparison / compare` (pipeline #89); treat a failure as blocking.
-   It compares each addon whose version the PR changes with the latest Stable
-   Release. It also runs the upgrade test (pipeline #143): the Release's
-   image, then this PR's amd64 image on the same data directories, under a
-   mock Supervisor; the new version must start (here: the Web GUI answers on
-   the ingress port 8099 and the container stays up). For now it checks
-   startup only, not data. To check data, add hooks in
-   `cloudflared/upgrade-check/`: `seed` writes data on the Release, `verify`
-   checks it on this PR's image. Their interface (environment, JSON report) is
-   in the Woow_HA_App_Store README, "第 2 類 升級測試", paragraph
-   "資料檢查（#138）". Keep the hooks executable
-   (`git update-index --chmod=+x`), with LF endings and a `#!` of python3 or
-   busybox sh only (no bash): they run in the Store's python:3.12-alpine mock
-   Supervisor container, so never `docker run` from them. A hook must not
-   leave background processes running when it exits, and a hook file must
-   not be a symlink to anything outside `upgrade-check/` (only that directory
-   is mounted). An optional `cloudflared/upgrade-check/settings.yaml` sets
-   `startup_timeout`, `stable_seconds` and `hook_timeout` (positive integer
-   seconds); `hook_timeout` defaults to 600 and covers the whole
-   `docker exec` of a hook. A PR that changes no version
-   passes it in seconds. The result is in the job summary. To re-run it,
-   "Re-run failed jobs" works: the artifacts of jobs that did not run again are
-   read from the attempt they ran in (pipeline #131, Store README).
-3. **Breaking changes must be declared in `upgrade-notes.yaml`** next to the
-   addon's `config.yaml` (here `cloudflared/upgrade-notes.yaml`). Create the
-   file only when the upgrade comparison asks for it; copy `change` and `key`
-   from its report and write the migration path. It also blocks a new fixable
-   Critical or High vulnerability unless it is accepted with a reason. The
-   release puts these entries on the GitHub Release. Rules, change names and
-   the file format: the Woow_HA_App_Store README, section
-   "升版比對與 `upgrade-notes.yaml`".
+## Making a change
+
+1. **Change `main` through a pull request.** Push a branch, open a PR, and
+   merge it when the Build workflow is green.
+2. **CI must pass.** `.github/workflows/build.yaml` runs the Web GUI, add-on
+   and frontend tests, the frontend build, and the add-on build for amd64 and
+   aarch64. Run its test steps locally before you push (README.md,
+   "Development", lists them), and fix a red check before merging.
+3. **Publish by bumping the version.** In the same PR, raise `version` in
+   `cloudflared/config.yaml` and add a top entry to `cloudflared/CHANGELOG.md`.
+   After the merge, CI pushes
+   `ghcr.io/woowtech/{arch}-addon-apporo-cf-tunnel-web:<version>`. A published
+   version is never rebuilt, so a merge without a bump publishes nothing.
+   Home Assistant offers the update as soon as `main` carries the new version,
+   and installs fail until the image is pushed: merge a bump only with every
+   check green.
+
+## Keep fixed
+
+Guard tests pin these; change a pin only together with a deliberate change to
+what it guards.
+
+- **The add-on identity** (`cloudflared/tests/test_addon_identity.py`): name,
+  slug, image, repository and the options schema keys. Home Assistant keys an
+  installed add-on by repository and slug, and users' saved options by the
+  schema keys; changing either strands existing installs.
+- **The platform contract** (`cloudflared/webgui/tests/test_branding.py`, with
+  the fake platform in `test_paas.py`): the OAuth client id
+  `woow-ha-smart-home`, the scopes, the device-code grant, and every `/api` and
+  `/oauth2` path and payload key. The Apporo platform shares them with WOOW's
+  platform, so the `woow` in them is the platform's, not branding.
+  `test_branding.py` also pins the origin `https://www.apporo.ai`, the device
+  label `Apporo CF Tunnel Web (HA add-on)` and English backend messages.
+- **Apporo branding in the UI**
+  (`cloudflared/webgui/frontend/src/__tests__/branding.spec.ts`): English text,
+  the Apporo palette (gold `#8B6B24`) and the Apporo favicon.
+
+When merging from upstream (README.md, "Merging from upstream"), keep the
+Apporo side of every conflict; these tests catch WOOW names that slip back in.

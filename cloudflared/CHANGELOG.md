@@ -1,8 +1,88 @@
 # Changelog
 
-## 1.1.3
+## 1.0.0 — Apporo fork of Woow Cloudflared 1.1.3
 
-### Changed
+First release of Apporo CF Tunnel Web, forked from
+[WOOWTECH/Woow_ha_cloudflare_tunnel_webgui](https://github.com/WOOWTECH/Woow_ha_cloudflare_tunnel_webgui)
+1.1.3 (commit `5b34a1e`). Every upstream feature is kept. The changes:
+
+### Platform
+- The platform link connects to the Apporo platform (Security Access on
+  `https://www.apporo.ai`) instead of WOOW PaaS (`https://aiot.woowtech.io`).
+  Portal links open `https://www.apporo.ai/woow#/...`, and device sign-in
+  happens on the page the platform returns (`https://www.apporo.ai/device`).
+- The add-on is labelled `Apporo CF Tunnel Web (HA add-on)` on the platform
+  (upstream: `Woow Cloudflared add-on`).
+- The platform contract is unchanged: the OAuth client `woow-ha-smart-home`
+  (the Apporo platform uses the same id), the scopes
+  `workspace:read security-access:read security-access:tunnel`, the
+  device-code grant, every `/api` and `/oauth2` path and payload key, and the
+  checks before claiming and releasing a tunnel.
+
+### Add-on
+- Name `Apporo CF Tunnel Web`, slug `apporo_cf_tunnel_web` (upstream:
+  `cloudflared`), image `ghcr.io/woowtech/{arch}-addon-apporo-cf-tunnel-web`,
+  sidebar panel `Apporo Tunnel`, repository
+  `https://github.com/WOOWTECH/apporo_ha_cf_tunnel_web`.
+- Home Assistant identifies an add-on by its repository and slug, so this is a
+  new add-on. It installs next to WOOW's Cloudflared add-on instead of
+  upgrading it, and starts with empty options and data; nothing carries over
+  from WOOW's add-on.
+- The options schema, ports, the ingress port 8099, `hassio_role` and the maps
+  are unchanged. The upstream `breaking_versions` (5.3.7 and 6.0.0) are gone,
+  because the version line starts again at 1.0.0.
+- Option translations: English and Traditional Chinese are rewritten for
+  Apporo, and their `tunnel_token` help points to the Apporo Link page.
+- The image labels, the startup log line and the script headers carry the new
+  name.
+
+### Interface
+- The Web GUI is in English throughout; upstream mixed Traditional Chinese and
+  English. The platform page is now **Apporo Link** (upstream: "PaaS 連結"),
+  and the backend's messages are in English too.
+- Apporo branding: gold `#8B6B24` as the primary colour, text `#212121`, a warm
+  `#fbf8f2` background, the "Apporo" wordmark with "CF Tunnel Web", and the
+  Apporo favicon. The FastAPI title is "Apporo CF Tunnel Web".
+
+### Repository and CI
+- One Build workflow runs the Web GUI tests, the add-on tests and the frontend
+  tests and build, then builds the add-on for amd64 and aarch64 with
+  home-assistant/builder and smoke-tests the amd64 image. On `main` it
+  publishes `ghcr.io/woowtech/{arch}-addon-apporo-cf-tunnel-web:<version>`
+  unless that version is already published; pull requests build without
+  pushing.
+- Removed WOOW's add-on store pipeline: the reusable workflows and actions of
+  `WOOWTECH/Woow_HA_App_Store` (SBOM, upgrade comparison, upgrade test,
+  release), the `woow-addon-sync` and `ha11-candidate` workflows,
+  `scripts/ha11_candidate_registry.py` and `cloudflared/upgrade-notes.yaml`.
+  AGENTS.md now states this fork's rules.
+- Removed WOOW-internal planning and history: `docs/plans/` and `.scratch/`.
+- README, README_zh-TW and this add-on's documentation are rewritten for
+  Apporo. They also cover Home Assistant 2026.8 and newer: the proxy is trusted
+  on the HTTP server settings page (an `http:` block in `configuration.yaml` is
+  imported once and then ignored), and Home Assistant's default port under the
+  Supervisor is 80.
+
+### Unchanged
+- The tunnel core: local- and remote-managed tunnels, cloudflared 2026.7.3,
+  the private token file (`--token-file`), metrics on `127.0.0.1:36500`, the
+  credential-file guard, the run-parameter allow-list and the redacted logs.
+
+### Version
+- Numbering starts again at 1.0.0.
+
+---
+
+## Upstream history (WOOWTECH/Woow_ha_cloudflare_tunnel_webgui)
+
+The entries below are upstream's changelog up to the fork point (1.1.3). Only
+their heading level was changed. The names in them (Woow Cloudflared, WOOW
+PaaS and its Portal, the WOOW App Store, `cloudflared/upgrade-notes.yaml`,
+`docs/plans/`) describe upstream, not this fork.
+
+### 1.1.3
+
+#### Changed
 - PaaS linking now supports a paid route subscription with zero Cloudflare
   Access seats when every selected public route explicitly has Access disabled.
   Mixed services remain possible: each protected route still needs its own
@@ -17,14 +97,14 @@
 - Anonymous external probes now describe a direct response on a public route
   as expected, while continuing to flag the same response on a protected one.
 
-### Migration
+#### Migration
 - No Supervisor option, port, schema, credential format, or stored state
   changes. Existing protected routes keep their Access checks and can still
   connect without the new public-route confirmation.
 
-## 1.1.2
+### 1.1.2
 
-### Security
+#### Security
 - Protect only `/data/cert.pem` and `/data/tunnel.json` before prepare, tunnel
   and Web GUI startup and right after credential creation. Existing files are
   normalized to the runtime owner and mode 0600 without reading their contents;
@@ -41,7 +121,7 @@
 - Disclosure regressions for startup logs, error responses and credential
   permissions run in CI on amd64.
 
-### Migration
+#### Migration
 - No option, schema, port or image change. Startup now refuses to run when
   `/data/cert.pem` or `/data/tunnel.json` is a symlink, a hardlink or not a
   regular file, and the log shows "Credential permission check failed". Before
@@ -52,9 +132,9 @@
 - Rollback to 1.1.1 removes the guard. Files already set to 0600 stay that way,
   but a later restore can again leave them world-readable.
 
-## 1.1.1
+### 1.1.1
 
-### Fixed
+#### Fixed
 - The PaaS link could never connect a newly protected service. When protection is turned on
   first and the login method and rules are added afterwards, which is the only order the
   Portal allows, PaaS treats this as an authorization change. It revokes the Access tokens
@@ -69,15 +149,15 @@
     Home Assistant until Access has been re-confirmed.
   - A pending route that is missing any part of that protection still blocks the claim.
 
-### Migration
+#### Migration
 - No option, schema, port or image change. A service that was stuck on "Access 保護或允許名單尚未確認"
   right after its protection was set up can now be linked. It answers 503 until PaaS
   finishes publishing. PaaS's connector probe and Access resync both run every 15 minutes, so
   this takes up to about 15 minutes after the connector comes up (7 minutes on SA61).
 
-## 1.1.0 — 2026-10-24
+### 1.1.0 — 2026-10-24
 
-### Release scope
+#### Release scope
 - PaaS subscription, payment, Access configuration and remote resource deletion
   use guided links to the PaaS Portal. This release does not perform billing
   or remote DNS/Access deletion inside the add-on.
@@ -88,7 +168,7 @@
   analytics remain outside the completed acceptance scope. See
   `docs/plans/paas-full-feature-acceptance-20261024.md` in the source repository.
 
-### Added
+#### Added
 - Plan-aware onboarding explains route counts versus Access seats and shows
   seat usage. Zero-seat plans and missing explicit login methods get actionable
   guidance. The PaaS page also explains HA port and trusted proxy setup.
@@ -99,7 +179,7 @@
   DNS/Access deletion still happen in the PaaS Portal.
 - Isolated backend, shell and browser coverage for the new flow.
 
-### Security
+#### Security
 - Validation errors no longer reflect submitted credentials, including whole
   request bodies and tokens accidentally pasted into run parameters.
 - Config cannot replace or remove a PaaS-managed token. Use the PaaS disconnect
@@ -126,7 +206,7 @@
   moderate findings remain in the Tailwind 3 build-only toolchain; the
   suggested Tailwind 4 upgrade requires a separate compatibility pass.
 
-### Migration
+#### Migration
 - Existing Local and manually configured token modes remain available. PaaS
   connection will not overwrite a manually stored Tunnel token; remove it
   deliberately on the Config page before linking a PaaS service. Disconnect
@@ -137,15 +217,15 @@
   Back up the add-on first. Only the documented run-parameter allow-list is
   accepted; remove unsupported flags and keep credentials in the token field.
 
-### Fixed
+#### Fixed
 - Unbreak the image build again. Alpine rebuilt `yq-go` from `4.53.3-r1` to
   `4.53.3-r2`, so the pinned `apk add yq-go=4.53.3-r1` could not resolve. The
   Alpine 3.24 community repo now carries `4.53.3-r2` on both `x86_64` and
   `aarch64`; the pin matches it.
 
-## 1.0.4 — 2026-09-08
+### 1.0.4 — 2026-09-08
 
-### Fixed
+#### Fixed
 - Unbreak the image build. `ARG YQ_VERSION` pinned `yq-go=4.53.3-r0`, which
   Alpine has since rebuilt as `-r0` -> `-r1`, so `apk add` could not resolve it
   and every build since 2026-08-07 failed. The base image
@@ -155,7 +235,7 @@
   which is why the bump was never proposed automatically — it now reads
   `alpine_3_24`.
 
-### Changed
+#### Changed
 - Rename the add-on from `Cloudflared Web GUI` to `Woow Cloudflared`, the house
   prefix every other WOOWTECH-authored add-on in the App Store carries. The
   slug stays `cloudflared`: Home Assistant keys an installed add-on by slug, so
@@ -164,7 +244,7 @@
   title, the FastAPI app title and the startup log line — since the version
   bump republishes it anyway.
 
-## 1.0.3
+### 1.0.3
 
 Hardening and test coverage following live verification on HAOS. Both sides
 of the Ingress trust boundary were confirmed on a running instance: a
@@ -172,7 +252,7 @@ neighbouring add-on calling the API directly on the container IP with
 spoofed `X-Ingress-Path` / `X-Hass-Source` headers is refused, while the
 real sidebar panel renders normally.
 
-### Changed
+#### Changed
 
 - The Ingress allow-list no longer relies solely on the hard-coded
   `172.30.32.2`. The Supervisor's address is resolved at startup and added,
@@ -180,7 +260,7 @@ real sidebar panel renders normally.
   their own GUI; the well-known address remains the fallback when DNS is
   unavailable.
 
-### Added
+#### Added
 
 - Rejected requests are now logged once per peer, with the offending address
   and the addresses that would have been accepted. A bare 403 with an empty
@@ -197,13 +277,13 @@ real sidebar panel renders normally.
 - Trust-boundary unit tests covering both failure modes: letting a
   neighbouring add-on in, and locking the real user out.
 
-## 1.0.2
+### 1.0.2
 
 Pre-launch hardening — every item below came out of a multi-agent review
 pass plus live install testing on HAOS (replacing the original Cloudflared
 add-on in production).
 
-### Fixed
+#### Fixed
 
 - **Token-mode users could not save** unrelated changes without re-entering
   their token: the minimal-config check ran before the stored token was
@@ -227,7 +307,7 @@ add-on in production).
 - Removed validate-options round-trip that used a wrong payload shape; the
   Supervisor's on-write validation is authoritative.
 
-### Added
+#### Added
 
 - `ingress_panel: true` — the GUI appears in the HA sidebar by default (as
   documented).
@@ -239,7 +319,7 @@ add-on in production).
 - Log stream redaction: tunnel tokens and tunnel.json secrets can no
   longer leak through the GUI log view at debug/trace log levels.
 
-### Changed
+#### Changed
 
 - `tunnel_token` schema type `str?` → `password?` (same values accepted;
   the HA configuration UI now masks the secret).
@@ -248,22 +328,22 @@ add-on in production).
 - English-only GUI copy (removed leftover Chinese strings from the
   standalone project).
 
-## 1.0.1
+### 1.0.1
 
-### Fixed
+#### Fixed
 
 - Web GUI crashed on startup (`ModuleNotFoundError: _zstd`): the base
   image's Python 3.14 on Alpine is built without the stdlib zstd module,
   which aiohttp 3.13.0 imports unconditionally. Bumped to aiohttp 3.14.3,
   which guards the import and falls back gracefully.
 
-## 1.0.0
+### 1.0.0
 
 First release of **Cloudflared Web GUI** — a fork of
 [homeassistant-apps/app-cloudflared](https://github.com/homeassistant-apps/app-cloudflared)
 with a Web GUI on top of the unchanged tunnel core.
 
-### Added
+#### Added
 
 - Web GUI served through Home Assistant Ingress (sidebar panel, protected by
   HA login, no extra port).
@@ -276,7 +356,7 @@ with a Web GUI on top of the unchanged tunnel core.
   - Logs: live WebSocket stream of the add-on log (same content as the HA
     Log tab), with filter and download.
 
-### Changed (vs upstream)
+#### Changed (vs upstream)
 
 - When started with a completely empty configuration, the add-on no longer
   exits fatally; the Web GUI stays up (tunnel stopped) so first-time setup
