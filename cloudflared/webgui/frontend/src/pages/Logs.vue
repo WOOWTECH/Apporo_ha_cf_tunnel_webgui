@@ -1,11 +1,11 @@
 <template>
   <div class="flex h-[calc(100vh-180px)] flex-col gap-4">
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold text-gray-900">Logs</h1>
+      <h1 class="text-2xl font-bold text-ink">Logs</h1>
       <div class="flex gap-2">
         <button
           v-if="!connected"
-          class="rounded-lg bg-cf-orange px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600"
+          class="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
           @click="connect()"
         >
           Connect
@@ -20,7 +20,7 @@
       </div>
     </div>
 
-    <p class="text-xs text-gray-400">
+    <p class="text-xs text-gray-500">
       Same content as the Home Assistant add-on Log tab (bashio + cloudflared).
     </p>
 
@@ -30,7 +30,7 @@
         v-model="filter"
         type="text"
         placeholder="Filter logs..."
-        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-cf-orange focus:outline-none focus:ring-1 focus:ring-cf-orange"
+        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
       />
     </div>
 

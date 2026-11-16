@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+    <h1 class="text-2xl font-bold text-ink">Dashboard</h1>
 
     <!-- Restarting banner -->
     <div
@@ -17,10 +17,11 @@
       class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700"
     >
       <span class="font-medium">Welcome!</span> The add-on is not configured
-      yet, so the tunnel is stopped.
-      <router-link to="/setup" class="font-medium underline">
-        Open the Setup page
-      </router-link>
+      yet, so the tunnel is stopped. With an Apporo Security Access
+      subscription, go to
+      <router-link to="/paas" class="font-medium underline">Apporo Link</router-link>.
+      To manage Cloudflare yourself,
+      <router-link to="/setup" class="font-medium underline">open the Setup page</router-link>
       to get your tunnel running in a few minutes.
     </div>
 
@@ -77,7 +78,7 @@
       >
         {{ tunnelStore.restarting ? 'Restarting...' : 'Restart Add-on' }}
       </button>
-      <p class="text-xs text-gray-400">
+      <p class="text-xs text-gray-500">
         Restarting re-runs the tunnel setup and applies the saved
         configuration (the GUI drops out for a few seconds).
       </p>
@@ -111,7 +112,7 @@ const mode = computed(() =>
 
 const modeDescription = computed(() => {
   if (mode.value === 'token')
-    return 'Remote-managed tunnel (Cloudflare dashboard token) — all other options are ignored.'
+    return 'Remote-managed tunnel (token from the Cloudflare dashboard or from Apporo) — all other options are ignored.'
   if (mode.value === 'local')
     return 'Local-managed tunnel (cert.pem) — configured by this add-on.'
   if (configStore.error) return `Could not load options: ${configStore.error}`

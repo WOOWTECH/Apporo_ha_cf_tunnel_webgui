@@ -1,12 +1,12 @@
 <template>
   <div class="space-y-6">
-    <div class="rounded-2xl border border-orange-200 bg-gradient-to-r from-orange-50 to-white p-6 shadow-sm">
-      <p class="text-xs font-bold uppercase tracking-widest text-cf-orange">建議初次使用</p>
-      <h2 class="mt-2 text-xl font-bold text-gray-900">透過 WOOW PaaS 訂閱並連結</h2>
-      <p class="mt-2 max-w-2xl text-sm leading-6 text-gray-600">依序完成訂閱、網址與 Access 保護，再由此 add-on 自動領取憑證並啟用。付款及存取規則都在 PaaS 完成。</p>
-      <router-link to="/paas" class="mt-4 inline-flex rounded-lg bg-cf-orange px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-600">開始 PaaS 引導 →</router-link>
+    <div class="rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-50 to-white p-6 shadow-sm">
+      <p class="text-xs font-bold uppercase tracking-widest text-brand-700">Recommended for first-time setup</p>
+      <h2 class="mt-2 text-xl font-bold text-ink">Subscribe and link with Apporo Security Access</h2>
+      <p class="mt-2 max-w-2xl text-sm leading-6 text-gray-600">Subscribe on www.apporo.ai, set up your hostnames and, if you want it, Access protection; this add-on then fetches its tunnel credential and starts the tunnel by itself. Payment and access rules are handled on Apporo.</p>
+      <router-link to="/paas" class="mt-4 inline-flex rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">Start the Apporo Link guide →</router-link>
     </div>
-    <h1 class="text-2xl font-bold text-gray-900">Setup</h1>
+    <h1 class="text-2xl font-bold text-ink">Setup</h1>
     <p class="text-sm text-gray-500">
       The add-on performs the tunnel setup automatically on every start:
       Cloudflare authorization → tunnel creation → DNS routes → connect.
@@ -54,7 +54,7 @@
           </p>
           <router-link
             to="/config"
-            class="mt-2 inline-block rounded-lg bg-cf-orange px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600"
+            class="mt-2 inline-block rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
           >
             Open Config
           </router-link>
@@ -82,7 +82,7 @@
                 :href="setupStore.state.login_url"
                 target="_blank"
                 rel="noopener"
-                class="rounded-lg bg-cf-orange px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600"
+                class="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
               >
                 Open Cloudflare authorization page
               </a>
@@ -94,7 +94,7 @@
                 {{ copied ? 'Copied!' : 'Copy link' }}
               </button>
             </div>
-            <p class="break-all font-mono text-xs text-gray-400">
+            <p class="break-all font-mono text-xs text-gray-500">
               {{ setupStore.state.login_url }}
             </p>
             <p class="text-sm text-gray-600">

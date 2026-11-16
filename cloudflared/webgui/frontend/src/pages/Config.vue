@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <h1 class="text-2xl font-bold text-gray-900">Configuration</h1>
+    <h1 class="text-2xl font-bold text-ink">Configuration</h1>
     <p class="text-sm text-gray-500">
       These are the add-on's Supervisor options — the same ones shown on the
       Home Assistant add-on configuration page. Saving here writes them back
@@ -18,7 +18,7 @@
           Remote-Managed Tunnel (tunnel_token)
         </legend>
         <div class="mt-2 space-y-3">
-          <p class="text-xs text-gray-400">
+          <p class="text-xs text-gray-500">
             Paste a tunnel token from the Cloudflare Zero Trust dashboard to
             use a remote-managed tunnel.
             <span class="font-medium">When a token is set, local hostname and
@@ -32,9 +32,9 @@
             @update:token="tokenInput = $event"
           />
           <p v-else class="rounded-lg bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900">
-            此憑證由 PaaS 自動管理。若要改用手動 token 或 Local 模式，請先到
-            <router-link to="/paas" class="font-semibold underline">PaaS 連結</router-link>
-            停止連線並解除綁定。
+            This credential is managed automatically by Apporo. To use a manual token or
+            local-managed mode instead, first stop the connection and release the binding on the
+            <router-link to="/paas" class="font-semibold underline">Apporo Link</router-link> page.
           </p>
           <div class="flex items-center gap-3">
             <span
@@ -68,7 +68,7 @@
         <div class="mt-2 space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700">External Hostname</label>
-            <p class="mb-1 text-xs text-gray-400">
+            <p class="mb-1 text-xs text-gray-500">
               Domain/subdomain for remote access to Home Assistant
               (e.g. ha.example.com). Home Assistant's port and SSL settings
               are detected automatically.
@@ -81,7 +81,7 @@
               :class="
                 externalHostnameError
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 focus:border-cf-orange focus:ring-cf-orange'
+                  : 'border-gray-300 focus:border-brand focus:ring-brand'
               "
             />
             <p v-if="externalHostnameError" class="mt-1 text-xs text-red-600">
@@ -91,14 +91,14 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-700">Tunnel Name</label>
-            <p class="mb-1 text-xs text-gray-400">
+            <p class="mb-1 text-xs text-gray-500">
               Name of the Cloudflare Tunnel (local-managed mode). Default: homeassistant
             </p>
             <input
               v-model="form.tunnel_name"
               type="text"
               placeholder="homeassistant"
-              class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-cf-orange focus:outline-none focus:ring-1 focus:ring-cf-orange"
+              class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
             />
           </div>
         </div>
@@ -107,11 +107,15 @@
       <!-- Additional Hosts -->
       <fieldset class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <legend class="px-2 text-sm font-semibold text-gray-700">Additional Hosts</legend>
-        <p class="mt-1 mb-3 text-xs text-gray-400">
+        <p class="mt-1 mb-3 text-xs text-gray-500">
           Route additional hostnames through the tunnel to other local
           services. DNS entries are created automatically on start.
         </p>
-        <p class="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">Local 模式移除網址或停用 add-on，不會自動刪除 Cloudflare DNS。請到 Cloudflare DNS 檢查該網址的 CNAME，確認不再使用後才刪除；也請檢查對應 Access 應用。</p>
+        <p class="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+          In local-managed mode, removing a hostname or stopping the add-on does not delete its
+          Cloudflare DNS record. Check the hostname's CNAME in Cloudflare DNS and delete it only once
+          nothing uses it; check the matching Access application too.
+        </p>
         <RouteEditor :routes="form.routes" @update:routes="form.routes = $event" />
       </fieldset>
 
@@ -122,7 +126,7 @@
           <div class="flex items-center justify-between">
             <div>
               <span class="text-sm font-medium text-gray-700">Nginx Proxy Manager</span>
-              <p class="text-xs text-gray-400">
+              <p class="text-xs text-gray-500">
                 Route unmatched traffic to the Nginx Proxy Manager add-on
                 (mutually exclusive with a custom catch-all URL).
               </p>
@@ -130,7 +134,7 @@
             <button
               type="button"
               class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200"
-              :class="form.nginx_proxy_manager ? 'bg-cf-orange' : 'bg-gray-200'"
+              :class="form.nginx_proxy_manager ? 'bg-brand' : 'bg-gray-200'"
               @click="toggleNpm"
             >
               <span
@@ -142,7 +146,7 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-700">Catch-All Service URL</label>
-            <p class="mb-1 text-xs text-gray-400">
+            <p class="mb-1 text-xs text-gray-500">
               Fallback service for hostnames not defined above (e.g. a reverse proxy).
             </p>
             <input
@@ -150,7 +154,7 @@
               :disabled="form.nginx_proxy_manager"
               type="text"
               placeholder="http://192.168.1.100"
-              class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-cf-orange focus:outline-none focus:ring-1 focus:ring-cf-orange disabled:bg-gray-100 disabled:text-gray-400"
+              class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand disabled:bg-gray-100 disabled:text-gray-400"
             />
           </div>
         </div>
@@ -163,14 +167,14 @@
           <div class="flex items-center justify-between">
             <div>
               <span class="text-sm font-medium text-gray-700">Post-Quantum Cryptography</span>
-              <p class="text-xs text-gray-400">
+              <p class="text-xs text-gray-500">
                 Restricts the tunnel to QUIC transport — may cause issues for some users.
               </p>
             </div>
             <button
               type="button"
               class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200"
-              :class="form.post_quantum ? 'bg-cf-orange' : 'bg-gray-200'"
+              :class="form.post_quantum ? 'bg-brand' : 'bg-gray-200'"
               @click="form.post_quantum = !form.post_quantum"
             >
               <span
@@ -182,13 +186,13 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-700">Add-on Log Level</label>
-            <p class="mb-1 text-xs text-gray-400">
+            <p class="mb-1 text-xs text-gray-500">
               Verbosity of the add-on's own log output (bashio). For the
               tunnel's log level use a run parameter: --loglevel=debug
             </p>
             <select
               v-model="form.log_level"
-              class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-cf-orange focus:outline-none focus:ring-1 focus:ring-cf-orange"
+              class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
             >
               <option value="">(default: info)</option>
               <option v-for="lvl in LOG_LEVELS" :key="lvl" :value="lvl">{{ lvl }}</option>
@@ -197,7 +201,7 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-700">Run Parameters</label>
-            <p class="mb-1 text-xs text-gray-400">
+            <p class="mb-1 text-xs text-gray-500">
               One per line, format --flag=value. Allowed flags:
               --edge-bind-address, --edge-ip-version, --grace-period,
               --ha-connections, --logfile, --loglevel, --pidfile, --protocol,
@@ -211,7 +215,7 @@
               :class="
                 runParametersError
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 focus:border-cf-orange focus:ring-cf-orange'
+                  : 'border-gray-300 focus:border-brand focus:ring-brand'
               "
             />
             <p v-if="runParametersError" class="mt-1 text-xs text-red-600">
@@ -225,14 +229,14 @@
       <div class="flex items-center gap-3">
         <button
           type="submit"
-          class="rounded-lg border border-cf-orange bg-white px-5 py-2 text-sm font-medium text-cf-orange shadow-sm hover:bg-orange-50 disabled:opacity-50"
+          class="rounded-lg border border-brand bg-white px-5 py-2 text-sm font-medium text-brand shadow-sm hover:bg-brand-50 disabled:opacity-50"
           :disabled="configStore.loading || hasErrors"
         >
           {{ configStore.loading ? 'Saving...' : 'Save' }}
         </button>
         <button
           type="button"
-          class="rounded-lg bg-cf-orange px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600 disabled:opacity-50"
+          class="rounded-lg bg-brand px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
           :disabled="configStore.loading || hasErrors || tunnelStore.restarting"
           @click="onSave(true)"
         >
@@ -247,7 +251,7 @@
         </button>
       </div>
 
-      <p class="text-xs text-gray-400">
+      <p class="text-xs text-gray-500">
         "Save" only stores the options — like the HA configuration page, a
         restart is needed before they take effect. "Save &amp; Restart" does
         both (the GUI drops out for a few seconds).
