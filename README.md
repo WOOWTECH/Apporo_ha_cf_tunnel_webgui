@@ -84,7 +84,7 @@ the first setup can happen in the browser. Upstream app-cloudflared exits in tha
 
    Or use this button:
 
-   [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FWOOWTECH%2Fapporo_ha_cf_tunnel_web)
+   [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FWOOWTECH%2FApporo_ha_cf_tunnel_webgui)
 
 2. Select **Apporo CF Tunnel Web** (listed under the repository "Apporo CF Tunnel Web
    (Apporo)") and choose **Install**. If it does not show up, choose **Check for updates** in

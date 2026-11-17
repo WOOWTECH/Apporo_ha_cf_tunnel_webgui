@@ -75,7 +75,7 @@ app-cloudflared 在這種情況會直接結束。
 
    或按這個按鈕：
 
-   [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FWOOWTECH%2Fapporo_ha_cf_tunnel_web)
+   [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FWOOWTECH%2FApporo_ha_cf_tunnel_webgui)
 
 2. 在「Apporo CF Tunnel Web (Apporo)」存放庫底下選 **Apporo CF Tunnel Web**，按「**安裝**」。若沒有出現，
    在 **⋮** 選單按「**檢查更新**」後重新整理頁面。

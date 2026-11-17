@@ -30,7 +30,7 @@ body:
       description: >-
         Can be found in:
         [Settings -> Add-ons -> Apporo CF Tunnel
-        Web](https://my.home-assistant.io/redirect/supervisor_addon/?addon=9f6adb2e_apporo_cf_tunnel_web).
+        Web](https://my.home-assistant.io/redirect/supervisor_addon/?addon=70fcdb0e_apporo_cf_tunnel_web).
   - type: input
     attributes:
       label: What was the last working version of Apporo CF Tunnel Web?
