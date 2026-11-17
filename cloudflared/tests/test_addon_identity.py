@@ -17,7 +17,7 @@ REPO = ADDON.parent
 NAME = "Apporo CF Tunnel Web"
 DESCRIPTION = ("Connect an Apporo Security Access (Cloudflare Tunnel) to Home Assistant "
                "without opening ports, with a Web GUI")
-REPOSITORY_URL = "https://github.com/WOOWTECH/apporo_ha_cf_tunnel_web"
+REPOSITORY_URL = "https://github.com/WOOWTECH/Apporo_ha_cf_tunnel_webgui"
 
 # WOOW's add-on name, repository, image, domains and App Store pipeline.
 WOOW_IDENTITY = ("woow cloudflared", "woow_ha_cloudflare_tunnel_webgui",

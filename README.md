@@ -30,7 +30,7 @@
 ## Overview
 
 Apporo CF Tunnel Web is the Apporo edition of
-[Woow Cloudflared](https://github.com/WOOWTECH/Woow_ha_cloudflare_tunnel_webgui), WOOWTECH's
+[Woow Cloudflared](https://github.com/WOOWTECH/Woow_ha_cf_tunnel_webgui), WOOWTECH's
 Cloudflared add-on with a Web GUI, forked from its version 1.1.3. It can do everything
 upstream can. The difference is where the platform link goes: the **Apporo Link** page
 connects Home Assistant to a **Security Access** on the Apporo platform
@@ -46,7 +46,7 @@ add-on create a tunnel in your own Cloudflare account. The tunnel core and its o
 from [homeassistant-apps/app-cloudflared][upstream-core], with WOOW's hardening on top.
 
 - On a Linux host without Home Assistant OS, use the Podman edition,
-  [Apporo CF Tunnel Web](https://github.com/WOOWTECH/apporo_cf_tunnel_web).
+  [Apporo CF Tunnel Web](https://github.com/WOOWTECH/Apporo_podman_cf_tunnel_webgui).
 - [Apporo Home Connect](https://github.com/WOOWTECH/apporo_ha_home_connect), the Home
   Assistant integration for Apporo remote access (optionally with MCP), does not run Security
   Access. This add-on does.
@@ -80,7 +80,7 @@ the first setup can happen in the browser. Upstream app-cloudflared exits in tha
 
 1. In Home Assistant, open **Settings > Apps > App store** (**Settings > Add-ons > Add-on
    store** in older releases). Open the **⋮** menu at the top right, choose **Repositories**,
-   add `https://github.com/WOOWTECH/apporo_ha_cf_tunnel_web` and close the dialog.
+   add `https://github.com/WOOWTECH/Apporo_ha_cf_tunnel_webgui` and close the dialog.
 
    Or use this button:
 
@@ -240,7 +240,7 @@ in the same Cloudflare account, give them different `tunnel_name` values and hos
 | | Upstream 1.1.3 (WOOW) | This fork 1.0.0 (Apporo) |
 |---|---|---|
 | Add-on name / slug | `Woow Cloudflared` / `cloudflared` | `Apporo CF Tunnel Web` / `apporo_cf_tunnel_web` |
-| Repository | `WOOWTECH/Woow_ha_cloudflare_tunnel_webgui` | `WOOWTECH/apporo_ha_cf_tunnel_web` |
+| Repository | `WOOWTECH/Woow_ha_cf_tunnel_webgui` | `WOOWTECH/Apporo_ha_cf_tunnel_webgui` |
 | Image | `ghcr.io/woowtech/{arch}-addon-cloudflared-webgui` | `ghcr.io/woowtech/{arch}-addon-apporo-cf-tunnel-web` |
 | Sidebar panel | `Cloudflared` | `Apporo Tunnel` |
 | Platform link | WOOW PaaS, `https://aiot.woowtech.io` | Apporo Security Access, `https://www.apporo.ai` |
@@ -341,7 +341,7 @@ visibility (at `https://github.com/users/WOOWTECH/packages`) and check that an a
 ### Merging from upstream
 
 ```bash
-git remote add woow https://github.com/WOOWTECH/Woow_ha_cloudflare_tunnel_webgui.git
+git remote add woow https://github.com/WOOWTECH/Woow_ha_cf_tunnel_webgui.git
 git fetch woow
 git merge woow/main
 ```
@@ -352,8 +352,8 @@ metadata and translations, CI and docs. Keep the Apporo side of them; the platfo
 
 ## Support
 
-- Issues: [GitHub Issues](https://github.com/WOOWTECH/apporo_ha_cf_tunnel_web/issues)
-- Upstream: [WOOWTECH/Woow_ha_cloudflare_tunnel_webgui](https://github.com/WOOWTECH/Woow_ha_cloudflare_tunnel_webgui)
+- Issues: [GitHub Issues](https://github.com/WOOWTECH/Apporo_ha_cf_tunnel_webgui/issues)
+- Upstream: [WOOWTECH/Woow_ha_cf_tunnel_webgui](https://github.com/WOOWTECH/Woow_ha_cf_tunnel_webgui)
 - Changelog: [cloudflared/CHANGELOG.md](cloudflared/CHANGELOG.md)
 
 ## Credits and license
@@ -364,9 +364,9 @@ MIT; see [LICENSE.md](LICENSE.md). Copyright (c) 2026 Unofficial Home Assistant 
 The tunnel core is the work of [homeassistant-apps/app-cloudflared][upstream-core] (originally
 by [Tobias Brenner][brenner-tobias]). The Web GUI and the guided platform link are by
 [WOOWTECH](https://github.com/WOOWTECH), from
-[Woow_ha_cloudflare_tunnel_webgui][woow-addon]. Apporo CF Tunnel Web points them at the Apporo
+[Woow_ha_cf_tunnel_webgui][woow-addon]. Apporo CF Tunnel Web points them at the Apporo
 platform.
 
 [upstream-core]: https://github.com/homeassistant-apps/app-cloudflared
 [brenner-tobias]: https://github.com/brenner-tobias
-[woow-addon]: https://github.com/WOOWTECH/Woow_ha_cloudflare_tunnel_webgui
+[woow-addon]: https://github.com/WOOWTECH/Woow_ha_cf_tunnel_webgui

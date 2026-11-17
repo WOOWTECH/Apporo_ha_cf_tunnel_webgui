@@ -29,7 +29,7 @@
 
 ## 概述
 
-Apporo CF Tunnel Web 是 [Woow Cloudflared](https://github.com/WOOWTECH/Woow_ha_cloudflare_tunnel_webgui)
+Apporo CF Tunnel Web 是 [Woow Cloudflared](https://github.com/WOOWTECH/Woow_ha_cf_tunnel_webgui)
 （WOOWTECH 附網頁介面的 Cloudflared 附加元件）的 Apporo 版，從它的 1.1.3 版分支而來。上游能做的它都能做，
 差別在平台連結連到哪裡：**Apporo Link** 頁面會把 Home Assistant 連到 Apporo 平台
 （[www.apporo.ai](https://www.apporo.ai)）上的 **Security Access**（安全存取服務），而不是 WOOW PaaS。
@@ -42,7 +42,7 @@ Security Access 是 Apporo 平台的隧道服務：平台會建立 Cloudflare tu
 建立 tunnel。隧道本體與選項來自 [homeassistant-apps/app-cloudflared][upstream-core]，再加上 WOOW 的安全強化。
 
 - 沒有 Home Assistant OS 的 Linux 主機，請用 Podman 版
-  [Apporo CF Tunnel Web](https://github.com/WOOWTECH/apporo_cf_tunnel_web)。
+  [Apporo CF Tunnel Web](https://github.com/WOOWTECH/Apporo_podman_cf_tunnel_webgui)。
 - [Apporo Home Connect](https://github.com/WOOWTECH/apporo_ha_home_connect) 是 Apporo 遠端存取（可加 MCP）的
   Home Assistant 整合，它不執行 Security Access；Security Access 由這個附加元件執行。
 
@@ -71,7 +71,7 @@ app-cloudflared 在這種情況會直接結束。
 ## 安裝
 
 1. 在 Home Assistant 開啟「**設定 → 應用程式 → 應用程式商店**」（舊版為「設定 → 附加元件 → 附加元件商店」），
-   按右上角 **⋮** 選「**管理存放庫**」，加入 `https://github.com/WOOWTECH/apporo_ha_cf_tunnel_web` 後關閉視窗。
+   按右上角 **⋮** 選「**管理存放庫**」，加入 `https://github.com/WOOWTECH/Apporo_ha_cf_tunnel_webgui` 後關閉視窗。
 
    或按這個按鈕：
 
@@ -203,7 +203,7 @@ Home Assistant 會拒絕經由它不信任的代理轉來的請求，並回 400 
 | | 上游 1.1.3（WOOW） | 本分支 1.0.0（Apporo） |
 |---|---|---|
 | 附加元件名稱／slug | `Woow Cloudflared`／`cloudflared` | `Apporo CF Tunnel Web`／`apporo_cf_tunnel_web` |
-| 存放庫 | `WOOWTECH/Woow_ha_cloudflare_tunnel_webgui` | `WOOWTECH/apporo_ha_cf_tunnel_web` |
+| 存放庫 | `WOOWTECH/Woow_ha_cf_tunnel_webgui` | `WOOWTECH/Apporo_ha_cf_tunnel_webgui` |
 | 映像檔 | `ghcr.io/woowtech/{arch}-addon-cloudflared-webgui` | `ghcr.io/woowtech/{arch}-addon-apporo-cf-tunnel-web` |
 | 側邊欄面板 | `Cloudflared` | `Apporo Tunnel` |
 | 平台連結 | WOOW PaaS，`https://aiot.woowtech.io` | Apporo Security Access，`https://www.apporo.ai` |
@@ -296,7 +296,7 @@ GitHub 為新架構或新映像檔名稱建立的套件可能是私有的：請�
 ### 合併上游
 
 ```bash
-git remote add woow https://github.com/WOOWTECH/Woow_ha_cloudflare_tunnel_webgui.git
+git remote add woow https://github.com/WOOWTECH/Woow_ha_cf_tunnel_webgui.git
 git fetch woow
 git merge woow/main
 ```
@@ -306,8 +306,8 @@ git merge woow/main
 
 ## 支援
 
-- 問題回報：[GitHub Issues](https://github.com/WOOWTECH/apporo_ha_cf_tunnel_web/issues)
-- 上游專案：[WOOWTECH/Woow_ha_cloudflare_tunnel_webgui](https://github.com/WOOWTECH/Woow_ha_cloudflare_tunnel_webgui)
+- 問題回報：[GitHub Issues](https://github.com/WOOWTECH/Apporo_ha_cf_tunnel_webgui/issues)
+- 上游專案：[WOOWTECH/Woow_ha_cf_tunnel_webgui](https://github.com/WOOWTECH/Woow_ha_cf_tunnel_webgui)
 - 變更紀錄：[cloudflared/CHANGELOG.md](cloudflared/CHANGELOG.md)
 
 ## 致謝與授權
@@ -317,8 +317,8 @@ MIT，見 [LICENSE.md](LICENSE.md)。Copyright (c) 2026 Unofficial Home Assistan
 
 隧道本體來自 [homeassistant-apps/app-cloudflared][upstream-core]（原作者 [Tobias Brenner][brenner-tobias]）；
 網頁介面與平台引導連結由 [WOOWTECH](https://github.com/WOOWTECH) 開發，出自
-[Woow_ha_cloudflare_tunnel_webgui][woow-addon]。Apporo CF Tunnel Web 把它們接到 Apporo 平台。
+[Woow_ha_cf_tunnel_webgui][woow-addon]。Apporo CF Tunnel Web 把它們接到 Apporo 平台。
 
 [upstream-core]: https://github.com/homeassistant-apps/app-cloudflared
 [brenner-tobias]: https://github.com/brenner-tobias
-[woow-addon]: https://github.com/WOOWTECH/Woow_ha_cloudflare_tunnel_webgui
+[woow-addon]: https://github.com/WOOWTECH/Woow_ha_cf_tunnel_webgui

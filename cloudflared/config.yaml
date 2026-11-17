@@ -8,7 +8,7 @@ slug: apporo_cf_tunnel_web
 description: >-
   Connect an Apporo Security Access (Cloudflare Tunnel) to Home Assistant
   without opening ports, with a Web GUI
-url: "https://github.com/WOOWTECH/apporo_ha_cf_tunnel_web"
+url: "https://github.com/WOOWTECH/Apporo_ha_cf_tunnel_webgui"
 image: "ghcr.io/woowtech/{arch}-addon-apporo-cf-tunnel-web"
 startup: services
 init: false
