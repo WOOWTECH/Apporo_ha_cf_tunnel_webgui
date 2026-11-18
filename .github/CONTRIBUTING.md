@@ -26,5 +26,5 @@ Even better: You could submit a pull request with a fix / new feature!
    the reviewer to merge it for you.
 
 [coc]: /.github/CODE_OF_CONDUCT.md
-[github]: https://github.com/WOOWTECH/apporo_ha_cf_tunnel_web/issues
-[prs]: https://github.com/WOOWTECH/apporo_ha_cf_tunnel_web/pulls
+[github]: https://github.com/WOOWTECH/Apporo_ha_cf_tunnel_webgui/issues
+[prs]: https://github.com/WOOWTECH/Apporo_ha_cf_tunnel_webgui/pulls

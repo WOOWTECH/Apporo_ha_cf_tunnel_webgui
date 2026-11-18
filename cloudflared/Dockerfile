@@ -44,7 +44,7 @@ ARG BUILD_DATE
 ARG BUILD_DESCRIPTION="Connect an Apporo Security Access (Cloudflare Tunnel) to Home Assistant without opening ports, with a Web GUI"
 ARG BUILD_NAME="Apporo CF Tunnel Web"
 ARG BUILD_REF
-ARG BUILD_REPOSITORY="WOOWTECH/apporo_ha_cf_tunnel_web"
+ARG BUILD_REPOSITORY="WOOWTECH/Apporo_ha_cf_tunnel_webgui"
 ARG BUILD_VERSION
 
 # Labels

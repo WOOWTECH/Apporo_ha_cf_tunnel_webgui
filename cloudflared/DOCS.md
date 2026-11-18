@@ -352,8 +352,8 @@ MIT License. Copyright (c) 2026 Unofficial Home Assistant Apps (Add-ons) and
 (c) 2026 Apporo. The full text is in [LICENSE.md][license].
 
 [apporo]: https://www.apporo.ai
-[repo]: https://github.com/WOOWTECH/apporo_ha_cf_tunnel_web
-[license]: https://github.com/WOOWTECH/apporo_ha_cf_tunnel_web/blob/main/LICENSE.md
+[repo]: https://github.com/WOOWTECH/Apporo_ha_cf_tunnel_webgui
+[license]: https://github.com/WOOWTECH/Apporo_ha_cf_tunnel_webgui/blob/main/LICENSE.md
 [upstream]: https://github.com/homeassistant-apps/app-cloudflared
 [woowtech]: https://github.com/WOOWTECH
 [addon-remote-tunnel]: https://github.com/homeassistant-apps/app-cloudflared/wiki/How-tos#how-to-configure-remote-tunnels
